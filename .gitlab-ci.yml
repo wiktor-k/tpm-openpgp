@@ -1,29 +1,6 @@
 image: "rust:latest"
 
-before_script:
-   - apt-get update -yqq
-   - apt-get install -yqq --no-install-recommends git rustc clang make pkg-config nettle-dev libssl-dev capnproto libsqlite3-dev libclang-3.9-dev
-   - git clone https://github.com/tpm2-software/tpm2-tss.git --branch 2.3.3
-   - cd tpm2-tss && ./bootstrap && ./configure && make -j$(nproc) && make install && ldconfig
-   - git clone https://github.com/tpm2-software/tpm2-tools.git --branch 4.1
-   - cd tpm2-tools && ./bootstrap && ./configure --enable-unit && make install
-
-test:cargo:
-  script:
-    - rustc --version && cargo --version  # Print version info for debugging
-    - cargo test --verbose
-
-check_fmt:cargo:
-  script:
-    - rustup component add rustfmt
-    - cargo fmt -- --check
-
-lint-code:
-  script:
-    - rustup component add clippy
-    - cargo clippy -- -D warnings
-
-e2e-test:
+build:
   image: docker:stable
   # When using dind, it's wise to use the overlayfs driver for
   # improved performance.
@@ -38,6 +15,7 @@ e2e-test:
 
 pages:
   script:
+    - apt-get update -yqq
     - apt-get install -yqq --no-install-recommends emacs org-mode texlive-latex-extra texlive-latex-base texlive-generic-recommended texlive-fonts-recommended
     - emacs -Q --batch README.org -f org-latex-export-to-pdf
     - curl -o /etc/emacs/htmlize.el https://raw.githubusercontent.com/hniksic/emacs-htmlize/master/htmlize.el
