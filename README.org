@@ -27,4 +27,45 @@ draw-bytes --tcti $TCTI
 #+end_src
 
 #+RESULTS:
-: 68dd2235cf66af1f982508bd3d2de16a4c7f96522e3110a531e95179b514d78a
+: 46d2f84712cefc51c8bc124354f7daa0fecd2f6066963ab15b6b50a63248dd90
+
+* Work plan
+
+** Signing and decryption using RSA keys [/]
+  - [ ] Creating new RSA keys and persisting them in TPM memory
+  - [ ] Using non-persistent RSA keys (that don't use up TPM memory)
+  - [ ] Importing RSA private keys to TPM (for already existing keys)
+  - [ ] Signing using RSA keys in the TPM
+  - [ ] Decryption using RSA keys in the TPM
+
+** Support for Elliptic Curve algorithms [/]
+  - [ ] Creating new EC keys and persisting them in TPM memory
+  - [ ] Using non-persistent EC keys (that don't use up TPM memory)
+  - [ ] Importing EC private keys to TPM (for already existing keys)
+  - [ ] Signing using EC keys in the TPM
+  - [ ] Decryption using EC keys in the TPM
+
+** Key migration support [/]
+  - [ ] Export of TPM encryption key
+  - [ ] Wrapping user's private key using TPM encryption key
+  - [ ] Import of the wrapper private key to the TPM chip
+  - [ ] PR to the upstream rust-tss-esapi crate
+
+** Design and implementation of private key store crate [/]
+  - [ ] Implementation of Sequoia's Decryptor and Signer traits for TPM keys
+  - [ ] API for managing TPM keys
+  - [ ] API for key migration
+
+** Test harness using a TPM simulator [/]
+  - [ ] Integration tests for creating, importing keys
+  - [ ] Test cases for encryption (using Sequoia) and decryption (using TPM crate)
+  - [ ] Tests for key migration
+
+** Extending Sequoia's CLI to support private key store [/]
+  - [ ] Extension to the CLI to allow specifying the location of the private key store
+  - [ ] Modification to the sourec code not to rely on software private keys
+ 
+** Documentation for tools and the API [/]
+  - [ ] Making sure all functions and items are documented
+  - [ ] Including README and end-user documentation on how to use the project
+  - [ ] Adding best practices document
