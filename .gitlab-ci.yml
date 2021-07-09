@@ -2,7 +2,11 @@ image: "rust:latest"
 
 before_script:
    - apt-get update -yqq
-   - apt-get install -yqq --no-install-recommends git rustc clang make pkg-config nettle-dev libssl-dev capnproto libsqlite3-dev libclang-3.9-dev tpm2-tools libtss2-dev
+   - apt-get install -yqq --no-install-recommends git rustc clang make pkg-config nettle-dev libssl-dev capnproto libsqlite3-dev libclang-3.9-dev
+   - git clone https://github.com/tpm2-software/tpm2-tss.git --branch 2.3.3
+   - cd tpm2-tss && ./bootstrap && ./configure && make -j$(nproc) && make install && ldconfig
+   - git clone https://github.com/tpm2-software/tpm2-tools.git --branch 4.1
+   - cd tpm2-tools && ./bootstrap && ./configure --enable-unit && make install
 
 test:cargo:
   script:
