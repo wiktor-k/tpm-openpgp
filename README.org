@@ -11,14 +11,20 @@ to test on real device set ~TCTI~ to ~device:/dev/tpmrm0~.
 
 #+begin_src sh
   tpm_server &
-
+  
   sleep 5
-
+  
   tpm2_startup -c -T mssim
-
+  
   TCTI=mssim:
+  PATH=$PATH:./target/debug
 #+end_src
 
-#+begin_src sh
-./target/debug/draw-bytes --tcti $TCTI
+To generate a number of random bytes using the specified TPM:
+
+#+begin_src sh :var TCTI="device:/dev/tpmrm0" PATH="./target/debug" :exports both
+draw-bytes --tcti $TCTI
 #+end_src
+
+#+RESULTS:
+: 68dd2235cf66af1f982508bd3d2de16a4c7f96522e3110a531e95179b514d78a
