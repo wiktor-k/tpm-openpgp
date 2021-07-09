@@ -31,3 +31,17 @@ e2e-test:
     - docker info
   script:
     - docker build .
+
+pages:
+  script:
+    - apt-get install -yqq --no-install-recommends emacs org-mode texlive-latex-extra texlive-latex-base texlive-generic-recommended texlive-fonts-recommended
+    - emacs -Q --batch README.org -f org-latex-export-to-pdf
+    - curl -o /etc/emacs/htmlize.el https://raw.githubusercontent.com/hniksic/emacs-htmlize/master/htmlize.el
+    - emacs -Q --batch README.org --eval "(load \"/etc/emacs/htmlize.el\")" -f org-html-export-to-html
+    - mkdir public
+    - mv README.html public/index.html
+    - mv README.pdf public
+  artifacts:
+    paths:
+      - README.pdf
+      - public
