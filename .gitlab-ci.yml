@@ -2,7 +2,7 @@ image: "rust:latest"
 
 before_script:
    - apt-get update -yqq
-   - apt-get install -yqq --no-install-recommends git rustc clang make pkg-config nettle-dev libssl-dev capnproto libsqlite3-dev libclang-3.9-dev
+   - apt-get install -yqq --no-install-recommends git rustc clang make pkg-config nettle-dev libssl-dev capnproto libsqlite3-dev libclang-3.9-dev tpm2-tools libtss2-dev
 
 test:cargo:
   script:
