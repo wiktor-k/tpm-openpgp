@@ -1,0 +1,33 @@
+image: "rust:latest"
+
+before_script:
+   - apt-get update -yqq
+   - apt-get install -yqq --no-install-recommends git rustc clang make pkg-config nettle-dev libssl-dev capnproto libsqlite3-dev libclang-3.9-dev
+
+test:cargo:
+  script:
+    - rustc --version && cargo --version  # Print version info for debugging
+    - cargo test --verbose
+
+check_fmt:cargo:
+  script:
+    - rustup component add rustfmt
+    - cargo fmt -- --check
+
+lint-code:
+  script:
+    - rustup component add clippy
+    - cargo clippy -- -D warnings
+
+e2e-test:
+  image: docker:stable
+  # When using dind, it's wise to use the overlayfs driver for
+  # improved performance.
+  variables:
+    DOCKER_DRIVER: overlay2
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+  script:
+    - docker build .
