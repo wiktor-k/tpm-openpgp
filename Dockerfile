@@ -46,8 +46,6 @@ WORKDIR /app
 
 RUN cargo build
 
-RUN cargo test
-
 COPY README.org /app/
 
 RUN emacs -Q --batch --eval " \
@@ -60,3 +58,7 @@ RUN emacs -Q --batch --eval " \
 RUN chmod +x README.sh
 
 RUN ./README.sh
+
+RUN cargo test
+
+RUN cargo clippy -- -D warnings
