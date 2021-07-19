@@ -13,6 +13,14 @@ build:
   script:
     - docker build .
 
+check-format:
+  script:
+    - cargo fmt -- --check
+
+lint-code:
+  script:
+    - cargo clippy -- -D warnings
+
 pages:
   script:
     - apt-get update -yqq

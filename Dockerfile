@@ -48,10 +48,6 @@ RUN cargo build
 
 RUN cargo test
 
-RUN cargo fmt -- --check
-
-RUN cargo clippy -- -D warnings
-
 COPY README.org /app/
 
 RUN emacs -Q --batch --eval " \
