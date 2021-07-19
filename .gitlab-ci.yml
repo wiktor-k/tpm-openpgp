@@ -15,10 +15,12 @@ build:
 
 check-format:
   script:
+    - rustup component add rustfmt
     - cargo fmt -- --check
 
 lint-code:
   script:
+    - rustup component add clippy
     - cargo clippy -- -D warnings
 
 pages:
