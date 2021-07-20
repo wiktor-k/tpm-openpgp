@@ -29,10 +29,45 @@ draw-bytes --tcti $TCTI
 #+RESULTS:
 : 46d2f84712cefc51c8bc124354f7daa0fecd2f6066963ab15b6b50a63248dd90
 
+** Creating persistent keys
+
+This crate uses descriptive documents for configuring key properties.
+
+The following configuration creates RSA-2048 signing key and persists
+it at the handle ~0x01000027~. ~123~ is used as a sample auth value (PIN).
+
+#+BEGIN_SRC yaml :tangle key.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000027
+  algo:
+    pk: RSA
+    digest: SHA-256
+    bits: 2048
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+The key description (~key.yml~) is being read by the ~create-key~
+binary that persists that key:
+
+#+BEGIN_SRC sh
+create-key -f key.yml
+#+END_SRC
+
+And the same file is used to retrieve it again using ~get-key~ binary:
+
+#+BEGIN_SRC sh
+get-key -f key.yml
+#+END_SRC
+
 * Work plan
 
-** Signing and decryption using RSA keys [/]
-  - [ ] Creating new RSA keys and persisting them in TPM memory
+** Signing and decryption using RSA keys [1/5]
+  - [X] Creating new RSA keys and persisting them in TPM memory
   - [ ] Using non-persistent RSA keys (that don't use up TPM memory)
   - [ ] Importing RSA private keys to TPM (for already existing keys)
   - [ ] Signing using RSA keys in the TPM

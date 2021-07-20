@@ -8,3 +8,6 @@ edition = "2018"
 [dependencies]
 tss-esapi = "5.1.0"
 structopt = "0.3.22"
+serde_yaml = "0.8.13"
+serde = "1"
+hex = "0.4.3"
