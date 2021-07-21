@@ -25,6 +25,7 @@ pub struct Specification {
 pub enum Capability {
     Decrypt,
     Sign,
+    Restrict,
     #[serde(other)]
     Unknown,
 }
