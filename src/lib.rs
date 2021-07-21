@@ -57,6 +57,9 @@ pub struct Provider {
 pub struct TpmProvider {
     pub tcti: String,
     pub handle: Option<u32>,
+    pub parent: Option<u32>,
+    pub private: Option<String>,
+    pub unique: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
