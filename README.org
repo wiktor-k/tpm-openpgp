@@ -153,9 +153,9 @@ get-key -f child-full.yml
 
 * Work plan
 
-** Signing and decryption using RSA keys [1/5]
+** Signing and decryption using RSA keys [2/5]
   - [X] Creating new RSA keys and persisting them in TPM memory
-  - [ ] Using non-persistent RSA keys (that don't use up TPM memory)
+  - [X] Using non-persistent RSA keys (that don't use up TPM memory)
   - [ ] Importing RSA private keys to TPM (for already existing keys)
   - [ ] Signing using RSA keys in the TPM
   - [ ] Decryption using RSA keys in the TPM
