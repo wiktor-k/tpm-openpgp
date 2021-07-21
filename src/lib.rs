@@ -1,11 +1,15 @@
 use serde::{Deserialize, Serialize};
+use std::convert::{TryFrom, TryInto};
+use tss_esapi::abstraction::cipher::Cipher;
 use tss_esapi::attributes::object::ObjectAttributesBuilder;
 use tss_esapi::constants::tss::*;
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
+use tss_esapi::structures::SymmetricDefinitionObject;
 use tss_esapi::tss2_esys::TPM2B_PUBLIC;
 use tss_esapi::utils::Tpm2BPublicBuilder;
-use tss_esapi::utils::{AsymSchemeUnion, PublicParmsUnion, TpmsRsaParmsBuilder};
+use tss_esapi::utils::{AsymSchemeUnion, PublicIdUnion, PublicParmsUnion, TpmsRsaParmsBuilder};
 use tss_esapi::Result;
+use tss_esapi_sys::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Description {
@@ -109,6 +113,21 @@ pub fn create(spec: &Specification) -> Result<TPM2B_PUBLIC> {
     builder = builder
         .with_type(TPM2_ALG_RSA)
         .with_parms(PublicParmsUnion::RsaDetail(rsa_params));
+
+    if let Some(unique) = &spec.provider.tpm.unique {
+        let public_modulus = hex::decode(unique).unwrap();
+        let mut public_modulus_buffer = [0_u8; 512];
+        public_modulus_buffer[..public_modulus.len()]
+            .clone_from_slice(&public_modulus[..public_modulus.len()]);
+
+        let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
+            size: public_modulus.len().try_into().unwrap(),
+            buffer: public_modulus_buffer,
+        };
+        let pub_id_union = PublicIdUnion::Rsa(Box::from(pub_buffer));
+
+        builder = builder.with_unique(pub_id_union);
+    }
     //} else {
     //    panic!("Unsupported algo!");
     //}

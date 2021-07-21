@@ -394,6 +394,7 @@ dependencies = [
  "serde_yaml",
  "structopt",
  "tss-esapi",
+ "tss-esapi-sys",
 ]
 
 [[package]]
