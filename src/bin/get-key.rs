@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fs::File;
 use std::str::FromStr;
@@ -8,7 +9,7 @@ use tss_esapi::constants::PropertyTag;
 use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 
-use tss_esapi::structures::SymmetricDefinition;
+use tss_esapi::structures::{Auth, Private, SymmetricDefinition};
 use tss_esapi::utils::PublicIdUnion;
 use tss_esapi::{Context, Tcti};
 
@@ -47,23 +48,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
     context.set_sessions((session, None, None));
 
-    eprintln!("2");
-    //context.ev
-    // println!("Vendor = {}", tss_esapi::utils::get_tpm_vendor(&mut context)?);
+    let key_handle: KeyHandle = if let Some(handle) = deserialized.spec.provider.tpm.handle {
+        let persistent_tpm_handle = PersistentTpmHandle::new(handle)?;
 
-    // GENERATE AND PERSIST IN TPM
-    let persistent_tpm_handle = PersistentTpmHandle::new(deserialized.spec.provider.tpm.handle)?;
+        let handle = context.execute_without_session(|ctx| {
+            ctx.tr_from_tpm_public(TpmHandle::Persistent(persistent_tpm_handle))
+                .expect("Need handle")
+        });
 
-    eprintln!("3");
-    let handle = context.execute_without_session(|ctx| {
-        ctx.tr_from_tpm_public(TpmHandle::Persistent(persistent_tpm_handle))
-            .expect("Need handle")
-    });
+        handle.into()
+    } else if let (Some(parent), Some(private)) = (
+        deserialized.spec.provider.tpm.parent,
+        &deserialized.spec.provider.tpm.private,
+    ) {
+        let persistent_tpm_handle = PersistentTpmHandle::new(parent)?;
 
-    eprintln!("4");
+        let handle = context.execute_without_session(|ctx| {
+            ctx.tr_from_tpm_public(TpmHandle::Persistent(persistent_tpm_handle))
+                .expect("Need handle")
+        });
 
-    let key_handle: KeyHandle = handle.into();
-
+        let key_handle: KeyHandle = handle.into();
+        context.tr_set_auth(
+            key_handle.into(),
+            &Auth::try_from(deserialized.spec.auth.as_bytes())?,
+        )?;
+        context.load(
+            key_handle,
+            Private::try_from(hex::decode(private)?)?,
+            tpm_openpgp::create(&deserialized.spec)?,
+        )?
+    } else {
+        panic!("Cannot load key");
+    };
     let (public, _, _) = context.read_public(key_handle)?;
 
     match unsafe { PublicIdUnion::from_public(&public)? } {
@@ -88,12 +105,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ => panic!("O_O"),
     };
-    //println!("Key persisted. Check `tpm2_getcap handles-persistent`.");
-    /*println!(
-        "To remove the key from the TPM use `tpm2_evictcontrol -c 0x{:X}`.",
-        opt.handle
-    );*/
 
-    //eprintln!("Out = {:#?}", pk.key_handle.value());
     Ok(())
 }
