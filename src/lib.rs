@@ -56,7 +56,7 @@ pub struct Provider {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TpmProvider {
     pub tcti: String,
-    pub handle: u32,
+    pub handle: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
