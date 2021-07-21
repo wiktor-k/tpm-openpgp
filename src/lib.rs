@@ -77,7 +77,7 @@ pub fn create(spec: &Specification) -> Result<TPM2B_PUBLIC> {
         .with_user_with_auth(true)
         .with_decrypt(spec.capabilities.contains(&Capability::Decrypt))
         .with_sign_encrypt(spec.capabilities.contains(&Capability::Sign))
-        .with_restricted(false)
+        .with_restricted(spec.capabilities.contains(&Capability::Restrict))
         .build()?;
 
     let mut builder = Tpm2BPublicBuilder::new()
@@ -102,7 +102,7 @@ pub fn create(spec: &Specification) -> Result<TPM2B_PUBLIC> {
         exponent: 0,
         for_signing: spec.capabilities.contains(&Capability::Sign),
         for_decryption: spec.capabilities.contains(&Capability::Decrypt),
-        restricted: false,
+        restricted: spec.capabilities.contains(&Capability::Restrict),
     }
     .build()?;
 
