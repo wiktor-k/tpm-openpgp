@@ -86,8 +86,18 @@ pub fn create(spec: &Specification) -> Result<TPM2B_PUBLIC> {
 
     //if let Rsa = &spec.algo.pk {
     let rsa_params = TpmsRsaParmsBuilder {
-        symmetric: None,
-        scheme: Some(AsymSchemeUnion::RSASSA(HashingAlgorithm::Sha256)),
+        symmetric: if spec.capabilities.contains(&Capability::Decrypt) {
+            Some(SymmetricDefinitionObject::try_from(Cipher::aes_256_cfb())?.into())
+        } else {
+            None
+        },
+        scheme: if spec.capabilities.contains(&Capability::Decrypt) {
+            Some(AsymSchemeUnion::AnySig(None))
+        } else if spec.capabilities.contains(&Capability::Sign) {
+            Some(AsymSchemeUnion::RSASSA(HashingAlgorithm::Sha256))
+        } else {
+            panic!("Key needs to be for decryption or for signing")
+        },
         key_bits: spec.algo.bits,
         exponent: 0,
         for_signing: spec.capabilities.contains(&Capability::Sign),
