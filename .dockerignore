@@ -1,2 +1,4 @@
 target
 NVChip
+# YML are key formats, don't send them to avoid dirty builds
+*.yml
