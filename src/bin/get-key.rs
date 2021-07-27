@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         context.load(
             key_handle,
             Private::try_from(hex::decode(private)?)?,
-            tpm_openpgp::create(&deserialized.spec)?,
+            tpm_openpgp::create(&deserialized.spec)?.0,
         )?
     } else {
         panic!("Cannot load key");

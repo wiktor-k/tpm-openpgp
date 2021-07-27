@@ -151,6 +151,30 @@ get-key -f child-full.yml
 | name:  | 000bc287d88098837a6fa7732ac5f1735996a4b5e7827fb0e82177b763b31654c77c                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 |        |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
+** Importing private RSA keys
+
+It is also possible to import already existing private keys into the TPM:
+
+#+BEGIN_SRC yaml :tangle import-handle.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000029
+  algo:
+    pk: RSA
+    digest: SHA-256
+    bits: 2048
+  private:
+    rsa:
+      prime: 11
+      modulus: 123
+      exponent: 65510
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
 * Work plan
 
 ** Signing and decryption using RSA keys [2/5]

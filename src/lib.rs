@@ -20,8 +20,22 @@ pub struct Description {
 pub struct Specification {
     pub provider: Provider,
     pub algo: AlgorithmSpec,
+    pub private: Option<PrivateKeyMaterial>,
     pub capabilities: Vec<Capability>,
     pub auth: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum PrivateKeyMaterial {
+    Rsa(PrivateRsaKeyMaterial),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct PrivateRsaKeyMaterial {
+    pub prime: String,
+    pub modulus: String,
+    pub exponent: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -73,7 +87,7 @@ pub struct Status {
     pub name: String,
 }
 
-pub fn create(spec: &Specification) -> Result<TPM2B_PUBLIC> {
+pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSITIVE>)> {
     let attributes = ObjectAttributesBuilder::new()
         .with_fixed_tpm(true)
         .with_fixed_parent(true)
@@ -89,7 +103,7 @@ pub fn create(spec: &Specification) -> Result<TPM2B_PUBLIC> {
         .with_object_attributes(attributes);
 
     //if let Rsa = &spec.algo.pk {
-    let rsa_params = TpmsRsaParmsBuilder {
+    let mut rsa_params_builder = TpmsRsaParmsBuilder {
         symmetric: if spec.capabilities.contains(&Capability::Decrypt) {
             Some(SymmetricDefinitionObject::try_from(Cipher::aes_256_cfb())?.into())
         } else {
@@ -107,8 +121,46 @@ pub fn create(spec: &Specification) -> Result<TPM2B_PUBLIC> {
         for_signing: spec.capabilities.contains(&Capability::Sign),
         for_decryption: spec.capabilities.contains(&Capability::Decrypt),
         restricted: spec.capabilities.contains(&Capability::Restrict),
-    }
-    .build()?;
+    };
+
+    let private = if let Some(PrivateKeyMaterial::Rsa(ref private_rsa)) = spec.private {
+        rsa_params_builder.exponent = private_rsa.exponent;
+        let public_modulus = hex::decode(&private_rsa.modulus).unwrap();
+        let mut public_modulus_buffer = [0u8; 512];
+        public_modulus_buffer[..public_modulus.len()]
+            .clone_from_slice(&public_modulus[..public_modulus.len()]);
+
+        let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
+            size: public_modulus.len().try_into().unwrap(),
+            buffer: public_modulus_buffer,
+        };
+        builder = builder.with_unique(PublicIdUnion::Rsa(Box::from(pub_buffer)));
+        rsa_params_builder.key_bits = pub_buffer.size;
+
+        let key_prime = hex::decode(&private_rsa.prime).unwrap();
+        let mut key_prime_buffer = [0u8; 256];
+        key_prime_buffer[..key_prime.len()].clone_from_slice(&key_prime[..key_prime.len()]);
+        let key_prime_len = key_prime.len().try_into().unwrap();
+
+        Some(TPM2B_SENSITIVE {
+            size: key_prime_len,
+            sensitiveArea: TPMT_SENSITIVE {
+                sensitiveType: TPM2_ALG_RSA,
+                authValue: Default::default(),
+                seedValue: Default::default(),
+                sensitive: TPMU_SENSITIVE_COMPOSITE {
+                    rsa: TPM2B_PRIVATE_KEY_RSA {
+                        size: key_prime_len,
+                        buffer: key_prime_buffer,
+                    },
+                },
+            },
+        })
+    } else {
+        None
+    };
+
+    let rsa_params = rsa_params_builder.build()?;
 
     builder = builder
         .with_type(TPM2_ALG_RSA)
@@ -132,7 +184,7 @@ pub fn create(spec: &Specification) -> Result<TPM2B_PUBLIC> {
     //    panic!("Unsupported algo!");
     //}
 
-    builder.build()
+    Ok((builder.build()?, private))
 }
 
 #[cfg(test)]

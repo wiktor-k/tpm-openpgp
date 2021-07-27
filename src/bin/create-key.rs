@@ -24,6 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
     let mut deserialized: Description = serde_yaml::from_reader(File::open(opt.file)?)?;
+    eprintln!("{:#?}", deserialized);
 
     let tcti = Tcti::from_str(&deserialized.spec.provider.tpm.tcti)?;
 
@@ -46,11 +47,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.set_sessions((session, None, None));
 
     let key_auth = { Auth::try_from(deserialized.spec.auth.as_bytes())? };
-
     if let Some(handle) = deserialized.spec.provider.tpm.handle {
         let pk = context.create_primary(
             Hierarchy::Owner,
-            &tpm_openpgp::create(&deserialized.spec)?,
+            &tpm_openpgp::create(&deserialized.spec)?.0,
             Some(&key_auth),
             None,
             None,
@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         let pk = context.create(
             key_handle,
-            &tpm_openpgp::create(&deserialized.spec)?,
+            &tpm_openpgp::create(&deserialized.spec)?.0,
             Some(&key_auth),
             None,
             None,
