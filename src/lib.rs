@@ -135,7 +135,7 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
             buffer: public_modulus_buffer,
         };
         builder = builder.with_unique(PublicIdUnion::Rsa(Box::from(pub_buffer)));
-        rsa_params_builder.key_bits = pub_buffer.size;
+        rsa_params_builder.key_bits = pub_buffer.size * 8;
 
         let key_prime = hex::decode(&private_rsa.prime).unwrap();
         let mut key_prime_buffer = [0u8; 256];
