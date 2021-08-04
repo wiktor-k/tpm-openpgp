@@ -89,8 +89,8 @@ pub struct Status {
 
 pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSITIVE>)> {
     let attributes = ObjectAttributesBuilder::new()
-        .with_fixed_tpm(true)
-        .with_fixed_parent(true)
+        .with_fixed_tpm(spec.private.is_none())
+        .with_fixed_parent(spec.private.is_none())
         .with_sensitive_data_origin(true)
         .with_user_with_auth(true)
         .with_decrypt(spec.capabilities.contains(&Capability::Decrypt))
