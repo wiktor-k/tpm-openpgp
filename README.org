@@ -1,4 +1,5 @@
 #+TITLE: TPM for OpenPGP
+#+HTML_HEAD: <link rel="stylesheet" href="https://sandyuraz.com/styles/org.min.css">
 #+PROPERTY: header-args :tangle yes :exports both
 
 This crate implements bindings so that TPM chips can be used with
