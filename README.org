@@ -243,6 +243,13 @@ echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key.yml | xxd
 000000f0: 137f 9292 8d94 d5e3 64c0 2a2b e4e8 4342  ........d.*+..CB
 #+end_example
 
+** Decryption with RSA keys
+
+#+BEGIN_SRC sh
+echo -n this is a sample encryption message | encrypt-raw -f decryption.yml > encrypted
+decrypt-raw -f decryption.yml < encrypted
+#+END_SRC
+
 * Work plan
 
 ** Signing and decryption using RSA keys [4/5]
