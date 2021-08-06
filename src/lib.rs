@@ -195,8 +195,8 @@ pub fn convert_to_key_handle(
     context: &mut Context,
     specification: &Specification,
 ) -> Result<KeyHandle> {
-    if let (public, Some(private)) = &create(specification)? {
-        context.load_external(private, public, Hierarchy::Null)
+    let key_handle = if let (public, Some(private)) = &create(specification)? {
+        context.load_external(private, public, Hierarchy::Null)?
     } else if let Some(handle) = specification.provider.tpm.handle {
         let persistent_tpm_handle = PersistentTpmHandle::new(handle)?;
 
@@ -205,7 +205,7 @@ pub fn convert_to_key_handle(
                 .expect("Need handle")
         });
 
-        Ok(handle.into())
+        handle.into()
     } else if let (Some(parent), Some(private)) = (
         specification.provider.tpm.parent,
         &specification.provider.tpm.private,
@@ -218,18 +218,21 @@ pub fn convert_to_key_handle(
         });
 
         let key_handle: KeyHandle = handle.into();
-        context.tr_set_auth(
-            key_handle.into(),
-            &Auth::try_from(specification.auth.as_bytes())?,
-        )?;
         context.load(
             key_handle,
             Private::try_from(hex::decode(private).unwrap())?,
             create(specification)?.0,
-        )
+        )?
     } else {
         panic!("Cannot load key");
-    }
+    };
+
+    context.tr_set_auth(
+        key_handle.into(),
+        &Auth::try_from(specification.auth.as_bytes())?,
+    )?;
+
+    Ok(key_handle)
 }
 
 #[cfg(test)]
