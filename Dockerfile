@@ -38,8 +38,6 @@ RUN apt-get update -y -qq && \
         && \
     apt-get clean
 
-RUN cargo install sequoia-sq
-
 COPY Cargo.toml Cargo.lock /app/
 COPY src /app/src
 WORKDIR /app
