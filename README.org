@@ -262,12 +262,12 @@ decrypt-raw -f decryption.yml < encrypted
 
 * Work plan
 
-** Signing and decryption using RSA keys [4/5]
+** Signing and decryption using RSA keys [5/5]
   - [X] Creating new RSA keys and persisting them in TPM memory
   - [X] Using non-persistent RSA keys (that don't use up TPM memory)
   - [X] Importing RSA private keys to TPM (for already existing keys)
   - [X] Signing using RSA keys in the TPM
-  - [ ] Decryption using RSA keys in the TPM
+  - [X] Decryption using RSA keys in the TPM
 
 ** Support for Elliptic Curve algorithms [/]
   - [ ] Creating new EC keys and persisting them in TPM memory
