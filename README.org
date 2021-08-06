@@ -188,13 +188,47 @@ get-key -f private-key.yml
 | name:  | 000b224c58d77459e7ebc304d8bea0d84f8d66d72695aec224d3b4eb10bec9323e2c                                                                                                                                                                                             |
 |        |                                                                                                                                                                                                                                                                  |
 
+** Signing with RSA keys
+
+Signing uses raw RSA keys and produces raw PKCS1.5 signatures for now.
+
+Ultimately these raw objects can be wrapped with protocol-specific
+structures e.g. certificates (for raw RSA keys) or OpenPGP signatures
+(for raw signatures).
+
+Signing can use any key that has been defined previously:
+
+#+BEGIN_SRC sh :results output
+echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key.yml | xxd
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+00000000: a2a7 066e 813b 0ae9 a978 2f78 dbb1 c25d  ...n.;...x/x...]
+00000010: 3402 fca2 106e 4052 ef3f e370 399d e95f  4....n@R.?.p9.._
+00000020: 45d3 5f56 f915 5f81 c9e9 6b4b ff27 9529  E._V.._...kK.'.)
+00000030: 591c 0cf2 6a19 18d5 af6a e2e1 161b b950  Y...j....j.....P
+00000040: cbfe 715b 201c e1dc 6691 f862 9e1b ca87  ..q[ ...f..b....
+00000050: 2313 f774 f689 dd5b e28f 9c9b 275c 6432  #..t...[....'\d2
+00000060: e491 533a 5509 bd9b 5ddf 8403 81cb e341  ..S:U...]......A
+00000070: 2fc7 23e9 9c93 4170 48e7 cdda 3c07 0151  /.#...ApH...<..Q
+00000080: dafd 00bb 352e dacc 33a9 a087 9a9d 93cf  ....5...3.......
+00000090: 4dff d59d 7f19 ca68 3d6e e3e7 26f5 17d4  M......h=n..&...
+000000a0: c683 677e c039 dd4e 27ff f2db f354 9fe1  ..g~.9.N'....T..
+000000b0: 6e7a 1ea5 c215 ba4d 44c1 5f72 0bce 1fe9  nz.....MD._r....
+000000c0: 53c2 3cbf 8412 d610 784d 6cf5 aa56 2c87  S.<.....xMl..V,.
+000000d0: 48a2 dbdf 3944 9ae3 94ae 2a57 98bb 420c  H...9D....*W..B.
+000000e0: 842e 2aa6 7dd2 1842 7ef4 5208 3b47 d410  ..*.}..B~.R.;G..
+000000f0: 137f 9292 8d94 d5e3 64c0 2a2b e4e8 4342  ........d.*+..CB
+#+end_example
+
 * Work plan
 
-** Signing and decryption using RSA keys [3/5]
+** Signing and decryption using RSA keys [4/5]
   - [X] Creating new RSA keys and persisting them in TPM memory
   - [X] Using non-persistent RSA keys (that don't use up TPM memory)
   - [X] Importing RSA private keys to TPM (for already existing keys)
-  - [ ] Signing using RSA keys in the TPM
+  - [X] Signing using RSA keys in the TPM
   - [ ] Decryption using RSA keys in the TPM
 
 ** Support for Elliptic Curve algorithms [/]
