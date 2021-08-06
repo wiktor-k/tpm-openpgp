@@ -68,6 +68,27 @@ And the same file is used to retrieve it again using ~get-key~ binary:
 get-key -f key.yml
 #+END_SRC
 
+Creating decryption key is just as strightforward:
+
+#+BEGIN_SRC yaml :tangle decryption.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000018
+  algo:
+    pk: RSA
+    digest: SHA-256
+    bits: 2048
+  capabilities:
+    - decrypt
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f decryption.yml
+#+END_SRC
+
 ** Creating non-persistent keys
 
 Non persistent keys allow using unlimited number of keys that never
