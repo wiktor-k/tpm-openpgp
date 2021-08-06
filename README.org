@@ -245,10 +245,20 @@ echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key.yml | xxd
 
 ** Decryption with RSA keys
 
-#+BEGIN_SRC sh
-echo -n this is a sample encryption message | encrypt-raw -f decryption.yml > encrypted
+Encryption and decryption works similarily to signing. The plaintext
+is being passed as standard input to =encrypt-raw= commmand and it
+outputs the raw cipher text. =decrypt-raw= works in the other direction
+consuming the cipher text and producing the plain text.
+
+Both of these take the key defintion as a sole argument.
+
+#+BEGIN_SRC sh :results output
+echo this is a sample encryption message | encrypt-raw -f decryption.yml > encrypted
 decrypt-raw -f decryption.yml < encrypted
 #+END_SRC
+
+#+RESULTS:
+: this is a sample encryption message
 
 * Work plan
 
