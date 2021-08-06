@@ -224,11 +224,11 @@ echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key.yml | xxd
 
 * Work plan
 
-** Signing and decryption using RSA keys [3/5]
+** Signing and decryption using RSA keys [4/5]
   - [X] Creating new RSA keys and persisting them in TPM memory
   - [X] Using non-persistent RSA keys (that don't use up TPM memory)
   - [X] Importing RSA private keys to TPM (for already existing keys)
-  - [ ] Signing using RSA keys in the TPM
+  - [X] Signing using RSA keys in the TPM
   - [ ] Decryption using RSA keys in the TPM
 
 ** Support for Elliptic Curve algorithms [/]
