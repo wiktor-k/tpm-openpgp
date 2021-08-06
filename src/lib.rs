@@ -3,11 +3,15 @@ use std::convert::{TryFrom, TryInto};
 use tss_esapi::abstraction::cipher::Cipher;
 use tss_esapi::attributes::object::ObjectAttributesBuilder;
 use tss_esapi::constants::tss::*;
+use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
+use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::structures::SymmetricDefinitionObject;
+use tss_esapi::structures::{Auth, Private};
 use tss_esapi::tss2_esys::TPM2B_PUBLIC;
 use tss_esapi::utils::Tpm2BPublicBuilder;
 use tss_esapi::utils::{AsymSchemeUnion, PublicIdUnion, PublicParmsUnion, TpmsRsaParmsBuilder};
+use tss_esapi::Context;
 use tss_esapi::Result;
 use tss_esapi_sys::*;
 
@@ -185,6 +189,47 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
     //}
 
     Ok((builder.build()?, private))
+}
+
+pub fn convert_to_key_handle(
+    context: &mut Context,
+    specification: &Specification,
+) -> Result<KeyHandle> {
+    if let (public, Some(private)) = &create(specification)? {
+        context.load_external(private, public, Hierarchy::Null)
+    } else if let Some(handle) = specification.provider.tpm.handle {
+        let persistent_tpm_handle = PersistentTpmHandle::new(handle)?;
+
+        let handle = context.execute_without_session(|ctx| {
+            ctx.tr_from_tpm_public(TpmHandle::Persistent(persistent_tpm_handle))
+                .expect("Need handle")
+        });
+
+        Ok(handle.into())
+    } else if let (Some(parent), Some(private)) = (
+        specification.provider.tpm.parent,
+        &specification.provider.tpm.private,
+    ) {
+        let persistent_tpm_handle = PersistentTpmHandle::new(parent)?;
+
+        let handle = context.execute_without_session(|ctx| {
+            ctx.tr_from_tpm_public(TpmHandle::Persistent(persistent_tpm_handle))
+                .expect("Need handle")
+        });
+
+        let key_handle: KeyHandle = handle.into();
+        context.tr_set_auth(
+            key_handle.into(),
+            &Auth::try_from(specification.auth.as_bytes())?,
+        )?;
+        context.load(
+            key_handle,
+            Private::try_from(hex::decode(private).unwrap())?,
+            create(specification)?.0,
+        )
+    } else {
+        panic!("Cannot load key");
+    }
 }
 
 #[cfg(test)]
