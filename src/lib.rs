@@ -108,7 +108,7 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
 
     //if let Rsa = &spec.algo.pk {
     let mut rsa_params_builder = TpmsRsaParmsBuilder {
-        symmetric: if spec.capabilities.contains(&Capability::Decrypt) {
+        symmetric: if spec.capabilities.contains(&Capability::Restrict) {
             Some(SymmetricDefinitionObject::try_from(Cipher::aes_256_cfb())?.into())
         } else {
             None

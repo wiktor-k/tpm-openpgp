@@ -68,6 +68,27 @@ And the same file is used to retrieve it again using ~get-key~ binary:
 get-key -f key.yml
 #+END_SRC
 
+Creating decryption key is just as strightforward:
+
+#+BEGIN_SRC yaml :tangle decryption.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000018
+  algo:
+    pk: RSA
+    digest: SHA-256
+    bits: 2048
+  capabilities:
+    - decrypt
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f decryption.yml
+#+END_SRC
+
 ** Creating non-persistent keys
 
 Non persistent keys allow using unlimited number of keys that never
@@ -222,14 +243,31 @@ echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key.yml | xxd
 000000f0: 137f 9292 8d94 d5e3 64c0 2a2b e4e8 4342  ........d.*+..CB
 #+end_example
 
+** Decryption with RSA keys
+
+Encryption and decryption works similarily to signing. The plaintext
+is being passed as standard input to =encrypt-raw= commmand and it
+outputs the raw cipher text. =decrypt-raw= works in the other direction
+consuming the cipher text and producing the plain text.
+
+Both of these take the key defintion as a sole argument.
+
+#+BEGIN_SRC sh :results output
+echo this is a sample encryption message | encrypt-raw -f decryption.yml > encrypted
+decrypt-raw -f decryption.yml < encrypted
+#+END_SRC
+
+#+RESULTS:
+: this is a sample encryption message
+
 * Work plan
 
-** Signing and decryption using RSA keys [4/5]
+** Signing and decryption using RSA keys [5/5]
   - [X] Creating new RSA keys and persisting them in TPM memory
   - [X] Using non-persistent RSA keys (that don't use up TPM memory)
   - [X] Importing RSA private keys to TPM (for already existing keys)
   - [X] Signing using RSA keys in the TPM
-  - [ ] Decryption using RSA keys in the TPM
+  - [X] Decryption using RSA keys in the TPM
 
 ** Support for Elliptic Curve algorithms [/]
   - [ ] Creating new EC keys and persisting them in TPM memory
