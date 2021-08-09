@@ -25,9 +25,11 @@ pages:
     - emacs -Q --batch README.org -f org-latex-export-to-pdf
     - curl -o /etc/emacs/htmlize.el https://raw.githubusercontent.com/hniksic/emacs-htmlize/master/htmlize.el
     - emacs -Q --batch README.org --eval "(load \"/etc/emacs/htmlize.el\")" -f org-html-export-to-html
+    - emacs -Q --batch CONTRIBUTING.org --eval "(load \"/etc/emacs/htmlize.el\")" -f org-html-export-to-html
     - mkdir public
     - mv README.html public/index.html
     - mv README.pdf public
+    - mv CONTRIBUTING.html public/contributing.html
   artifacts:
     paths:
       - README.pdf
