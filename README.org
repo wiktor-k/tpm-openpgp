@@ -11,14 +11,17 @@ First, we assume that we'll use TPM 2 simulator package. If you want
 to test on real device set ~TCTI~ to ~device:/dev/tpmrm0~.
 
 #+begin_src sh
-  tpm_server &
+set -e
+set -o pipefail
   
-  sleep 5
+tpm_server &
   
-  tpm2_startup -c -T mssim
-  
-  TCTI=mssim:
-  PATH=$PATH:./target/debug
+sleep 5
+
+tpm2_startup -c -T mssim
+
+TCTI=mssim:
+PATH=$PATH:./target/debug
 #+end_src
 
 To generate a number of random bytes using the specified TPM:
@@ -162,7 +165,7 @@ spec:
 Except for the different configuration this key is perfectly usable in
 all operations:
 
-#+BEGIN_SRC sh
+#+BEGIN_SRC sh :tangle no
 get-key -f child-full.yml
 #+END_SRC
 
