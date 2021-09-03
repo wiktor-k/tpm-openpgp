@@ -162,6 +162,69 @@ spec:
 create-key -f decryption-nist-p256.yml
 #+END_SRC
 
+*** EC: NIST-P384
+
+The following configuration creates NIST-P384 signing key and persists
+it at the handle ~0x01000227~. ~123~ is used as a sample auth value (PIN).
+
+#+BEGIN_SRC yaml :tangle key-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000227
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+The key description (~key-nist-p384.yml~) is being read by the ~create-key~
+binary that persists that key:
+
+#+BEGIN_SRC sh
+create-key -f key-nist-p384.yml
+#+END_SRC
+
+Presence of the key can be checked by using ~tpm2_getcap
+handles-persistent~ command from TSS suite of tools.
+
+And the same file is used to retrieve it again using ~get-key~ binary:
+
+#+BEGIN_SRC sh
+get-key -f key-nist-p384.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: b5d6885b6774c8a1a944b4559f26b931df031c893bc05139fc54c876b01401253ecea26ea17fa70c017bb5b4d6bb5885
+:     y: d29cda6bc9742e49b030db3ec9004217ba8fd052b7d26fc7bddbbe7cb9854fabf7cdc5978ebb8fed9383d387a07bcdf9
+: manu: 1229081888
+: name: 000b8e28e3d95570efc686bb21f5329a658fe09321d38b496fe02749251e28a07ef5
+
+Creating decryption key is just as strightforward:
+
+#+BEGIN_SRC yaml :tangle decryption-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000218
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - decrypt
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f decryption-nist-p384.yml
+#+END_SRC
+
 ** Creating non-persistent keys
 
 Non persistent keys allow using unlimited number of keys that never

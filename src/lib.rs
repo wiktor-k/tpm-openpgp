@@ -67,6 +67,17 @@ pub enum AlgorithmSpec {
 pub enum EcCurve {
     #[serde(rename = "NIST-P256")]
     NistP256,
+    #[serde(rename = "NIST-P384")]
+    NistP384,
+}
+
+impl From<&EcCurve> for EccCurve {
+    fn from(curve: &EcCurve) -> Self {
+        match curve {
+            EcCurve::NistP256 => EccCurve::NistP256,
+            EcCurve::NistP384 => EccCurve::NistP384,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -192,8 +203,7 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
             }
             (builder, private)
         }
-        AlgorithmSpec::Ec { curve } => {
-            assert_eq!(curve, &EcCurve::NistP256);
+        AlgorithmSpec::Ec { ref curve } => {
             let ecc_builder = TpmsEccParmsBuilder {
                 symmetric: None,
                 scheme: if spec.capabilities.contains(&Capability::Decrypt) {
@@ -203,7 +213,7 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
                 } else {
                     panic!("Key needs to be for decryption or for signing")
                 },
-                curve: EccCurve::NistP256,
+                curve: curve.into(),
                 for_signing: spec.capabilities.contains(&Capability::Sign),
                 for_decryption: spec.capabilities.contains(&Capability::Decrypt),
                 restricted: spec.capabilities.contains(&Capability::Restrict),
