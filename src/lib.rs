@@ -5,12 +5,15 @@ use tss_esapi::attributes::object::ObjectAttributesBuilder;
 use tss_esapi::constants::tss::*;
 use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
+use tss_esapi::interface_types::ecc::EccCurve;
 use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::structures::SymmetricDefinitionObject;
 use tss_esapi::structures::{Auth, Private};
 use tss_esapi::tss2_esys::TPM2B_PUBLIC;
 use tss_esapi::utils::Tpm2BPublicBuilder;
-use tss_esapi::utils::{AsymSchemeUnion, PublicIdUnion, PublicParmsUnion, TpmsRsaParmsBuilder};
+use tss_esapi::utils::{
+    AsymSchemeUnion, PublicIdUnion, PublicParmsUnion, TpmsEccParmsBuilder, TpmsRsaParmsBuilder,
+};
 use tss_esapi::Context;
 use tss_esapi::Result;
 use tss_esapi_sys::*;
@@ -57,7 +60,13 @@ pub enum AlgorithmSpec {
     #[serde(rename = "RSA")]
     Rsa { bits: u16 },
     #[serde(rename = "EC")]
-    Ec { curve: String },
+    Ec { curve: EcCurve },
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub enum EcCurve {
+    #[serde(rename = "NIST-P256")]
+    NistP256,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -177,7 +186,27 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
             }
             (builder, private)
         }
-        _ => panic!("Unsupported algo!"),
+        AlgorithmSpec::Ec { curve } => {
+            assert_eq!(curve, &EcCurve::NistP256);
+            let ecc_builder = TpmsEccParmsBuilder {
+                symmetric: None,
+                scheme: if spec.capabilities.contains(&Capability::Decrypt) {
+                    AsymSchemeUnion::AnySig(None)
+                } else if spec.capabilities.contains(&Capability::Sign) {
+                    AsymSchemeUnion::ECDSA(HashingAlgorithm::Sha256)
+                } else {
+                    panic!("Key needs to be for decryption or for signing")
+                },
+                curve: EccCurve::NistP256,
+                for_signing: spec.capabilities.contains(&Capability::Sign),
+                for_decryption: spec.capabilities.contains(&Capability::Decrypt),
+                restricted: spec.capabilities.contains(&Capability::Restrict),
+            };
+            builder = builder
+                .with_type(TPM2_ALG_ECC)
+                .with_parms(PublicParmsUnion::EccDetail(ecc_builder.build()?));
+            (builder, None)
+        }
     };
 
     Ok((builder.build()?, private))

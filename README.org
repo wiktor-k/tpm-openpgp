@@ -37,6 +37,8 @@ draw-bytes --tcti $TCTI
 
 This crate uses descriptive documents for configuring key properties.
 
+*** RSA
+
 The following configuration creates RSA-2048 signing key and persists
 it at the handle ~0x01000027~. ~123~ is used as a sample auth value (PIN).
 
@@ -88,6 +90,61 @@ spec:
 
 #+BEGIN_SRC sh
 create-key -f decryption.yml
+#+END_SRC
+
+*** EC: NIST-P256
+
+The following configuration creates NIST-P256 signing key and persists
+it at the handle ~0x01000127~. ~123~ is used as a sample auth value (PIN).
+
+#+BEGIN_SRC yaml :tangle key-nist-p256.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000127
+  algo:
+    EC:
+      curve: NIST-P256
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+The key description (~key-nist-p256.yml~) is being read by the ~create-key~
+binary that persists that key:
+
+#+BEGIN_SRC sh
+create-key -f key-nist-p256.yml
+#+END_SRC
+
+Presence of the key can be checked by using ~tpm2_getcap
+handles-persistent~ command from TSS suite of tools.
+
+And the same file is used to retrieve it again using ~get-key~ binary:
+
+#+BEGIN_SRC sh
+get-key -f key-nist-p256.yml
+#+END_SRC
+
+Creating decryption key is just as strightforward:
+
+#+BEGIN_SRC yaml :tangle decryption-nist-p256.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000118
+  algo:
+    EC:
+      curve: NIST-P256
+  capabilities:
+    - decrypt
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f decryption-nist-p256.yml
 #+END_SRC
 
 ** Creating non-persistent keys
