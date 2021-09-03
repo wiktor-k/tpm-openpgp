@@ -53,31 +53,11 @@ pub enum Capability {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum PK {
-    #[serde(rename = "RSA-1024")]
-    Rsa1024,
-    #[serde(rename = "RSA-2048")]
-    Rsa2048,
-    #[serde(rename = "RSA-4096")]
-    Rsa4096,
-    #[serde(rename = "EC-NIST-P256")]
-    EcNistP256,
-}
-
-impl PK {
-    fn bits(&self) -> u16 {
-        match &self {
-            Self::Rsa1024 => 1024,
-            Self::Rsa2048 => 2048,
-            Self::Rsa4096 => 4096,
-            Self::EcNistP256 => 256,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AlgorithmSpec {
-    pub pk: PK,
+pub enum AlgorithmSpec {
+    #[serde(rename = "RSA")]
+    Rsa { bits: u16 },
+    #[serde(rename = "EC")]
+    Ec { curve: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -116,87 +96,89 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
         .with_name_alg(TPM2_ALG_SHA256)
         .with_object_attributes(attributes);
 
-    //if let Rsa = &spec.algo.pk {
-    let mut rsa_params_builder = TpmsRsaParmsBuilder {
-        symmetric: if spec.capabilities.contains(&Capability::Restrict) {
-            Some(SymmetricDefinitionObject::try_from(Cipher::aes_256_cfb())?.into())
-        } else {
-            None
-        },
-        scheme: if spec.capabilities.contains(&Capability::Decrypt) {
-            Some(AsymSchemeUnion::AnySig(None))
-        } else if spec.capabilities.contains(&Capability::Sign) {
-            Some(AsymSchemeUnion::RSASSA(HashingAlgorithm::Sha256))
-        } else {
-            panic!("Key needs to be for decryption or for signing")
-        },
-        key_bits: spec.algo.pk.bits(),
-        exponent: 0,
-        for_signing: spec.capabilities.contains(&Capability::Sign),
-        for_decryption: spec.capabilities.contains(&Capability::Decrypt),
-        restricted: spec.capabilities.contains(&Capability::Restrict),
-    };
-
-    let private = if let Some(PrivateKeyMaterial::Rsa(ref private_rsa)) = spec.private {
-        rsa_params_builder.exponent = private_rsa.exponent;
-        let public_modulus = hex::decode(&private_rsa.modulus).unwrap();
-        let mut public_modulus_buffer = [0u8; 512];
-        public_modulus_buffer[..public_modulus.len()]
-            .clone_from_slice(&public_modulus[..public_modulus.len()]);
-
-        let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
-            size: public_modulus.len().try_into().unwrap(),
-            buffer: public_modulus_buffer,
-        };
-        builder = builder.with_unique(PublicIdUnion::Rsa(Box::from(pub_buffer)));
-        rsa_params_builder.key_bits = pub_buffer.size * 8;
-
-        let key_prime = hex::decode(&private_rsa.prime).unwrap();
-        let mut key_prime_buffer = [0u8; 256];
-        key_prime_buffer[..key_prime.len()].clone_from_slice(&key_prime[..key_prime.len()]);
-        let key_prime_len = key_prime.len().try_into().unwrap();
-
-        Some(TPM2B_SENSITIVE {
-            size: key_prime_len,
-            sensitiveArea: TPMT_SENSITIVE {
-                sensitiveType: TPM2_ALG_RSA,
-                authValue: Default::default(),
-                seedValue: Default::default(),
-                sensitive: TPMU_SENSITIVE_COMPOSITE {
-                    rsa: TPM2B_PRIVATE_KEY_RSA {
-                        size: key_prime_len,
-                        buffer: key_prime_buffer,
-                    },
+    let (builder, private) = match &spec.algo {
+        AlgorithmSpec::Rsa { bits } => {
+            let mut rsa_params_builder = TpmsRsaParmsBuilder {
+                symmetric: if spec.capabilities.contains(&Capability::Restrict) {
+                    Some(SymmetricDefinitionObject::try_from(Cipher::aes_256_cfb())?.into())
+                } else {
+                    None
                 },
-            },
-        })
-    } else {
-        None
+                scheme: if spec.capabilities.contains(&Capability::Decrypt) {
+                    Some(AsymSchemeUnion::AnySig(None))
+                } else if spec.capabilities.contains(&Capability::Sign) {
+                    Some(AsymSchemeUnion::RSASSA(HashingAlgorithm::Sha256))
+                } else {
+                    panic!("Key needs to be for decryption or for signing")
+                },
+                key_bits: *bits,
+                exponent: 0,
+                for_signing: spec.capabilities.contains(&Capability::Sign),
+                for_decryption: spec.capabilities.contains(&Capability::Decrypt),
+                restricted: spec.capabilities.contains(&Capability::Restrict),
+            };
+
+            let private = if let Some(PrivateKeyMaterial::Rsa(ref private_rsa)) = spec.private {
+                rsa_params_builder.exponent = private_rsa.exponent;
+                let public_modulus = hex::decode(&private_rsa.modulus).unwrap();
+                let mut public_modulus_buffer = [0u8; 512];
+                public_modulus_buffer[..public_modulus.len()]
+                    .clone_from_slice(&public_modulus[..public_modulus.len()]);
+
+                let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
+                    size: public_modulus.len().try_into().unwrap(),
+                    buffer: public_modulus_buffer,
+                };
+                builder = builder.with_unique(PublicIdUnion::Rsa(Box::from(pub_buffer)));
+                rsa_params_builder.key_bits = pub_buffer.size * 8;
+
+                let key_prime = hex::decode(&private_rsa.prime).unwrap();
+                let mut key_prime_buffer = [0u8; 256];
+                key_prime_buffer[..key_prime.len()].clone_from_slice(&key_prime[..key_prime.len()]);
+                let key_prime_len = key_prime.len().try_into().unwrap();
+
+                Some(TPM2B_SENSITIVE {
+                    size: key_prime_len,
+                    sensitiveArea: TPMT_SENSITIVE {
+                        sensitiveType: TPM2_ALG_RSA,
+                        authValue: Default::default(),
+                        seedValue: Default::default(),
+                        sensitive: TPMU_SENSITIVE_COMPOSITE {
+                            rsa: TPM2B_PRIVATE_KEY_RSA {
+                                size: key_prime_len,
+                                buffer: key_prime_buffer,
+                            },
+                        },
+                    },
+                })
+            } else {
+                None
+            };
+
+            let rsa_params = rsa_params_builder.build()?;
+
+            builder = builder
+                .with_type(TPM2_ALG_RSA)
+                .with_parms(PublicParmsUnion::RsaDetail(rsa_params));
+
+            if let Some(unique) = &spec.provider.tpm.unique {
+                let public_modulus = hex::decode(unique).unwrap();
+                let mut public_modulus_buffer = [0_u8; 512];
+                public_modulus_buffer[..public_modulus.len()]
+                    .clone_from_slice(&public_modulus[..public_modulus.len()]);
+
+                let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
+                    size: public_modulus.len().try_into().unwrap(),
+                    buffer: public_modulus_buffer,
+                };
+                let pub_id_union = PublicIdUnion::Rsa(Box::from(pub_buffer));
+
+                builder = builder.with_unique(pub_id_union);
+            }
+            (builder, private)
+        }
+        _ => panic!("Unsupported algo!"),
     };
-
-    let rsa_params = rsa_params_builder.build()?;
-
-    builder = builder
-        .with_type(TPM2_ALG_RSA)
-        .with_parms(PublicParmsUnion::RsaDetail(rsa_params));
-
-    if let Some(unique) = &spec.provider.tpm.unique {
-        let public_modulus = hex::decode(unique).unwrap();
-        let mut public_modulus_buffer = [0_u8; 512];
-        public_modulus_buffer[..public_modulus.len()]
-            .clone_from_slice(&public_modulus[..public_modulus.len()]);
-
-        let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
-            size: public_modulus.len().try_into().unwrap(),
-            buffer: public_modulus_buffer,
-        };
-        let pub_id_union = PublicIdUnion::Rsa(Box::from(pub_buffer));
-
-        builder = builder.with_unique(pub_id_union);
-    }
-    //} else {
-    //    panic!("Unsupported algo!");
-    //}
 
     Ok((builder.build()?, private))
 }
