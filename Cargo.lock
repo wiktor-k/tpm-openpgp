@@ -399,9 +399,9 @@ dependencies = [
 
 [[package]]
 name = "tss-esapi"
-version = "5.1.0"
+version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cf43872cf84e8d13a64b70eb5c1ae39d1fbbdc639d6ff9884538eca2221227f"
+checksum = "23bb26bea47d9a884f613730d2f68c9aeaef9a6a51ce8277d111042dbb8c5975"
 dependencies = [
  "bitfield",
  "enumflags2",

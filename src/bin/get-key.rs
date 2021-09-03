@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tcti = Tcti::from_str(&deserialized.spec.provider.tpm.tcti)?;
 
-    let mut context = unsafe { Context::new(tcti)? };
+    let mut context = Context::new(tcti)?;
 
     let session = context.start_auth_session(
         None,
