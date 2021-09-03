@@ -76,15 +76,8 @@ impl PK {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum Digest {
-    #[serde(rename = "SHA-256")]
-    SHA256,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct AlgorithmSpec {
     pub pk: PK,
-    pub digest: Digest,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
