@@ -54,7 +54,25 @@ pub enum Capability {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PK {
-    RSA,
+    #[serde(rename = "RSA-1024")]
+    Rsa1024,
+    #[serde(rename = "RSA-2048")]
+    Rsa2048,
+    #[serde(rename = "RSA-4096")]
+    Rsa4096,
+    #[serde(rename = "EC-NIST-P256")]
+    EcNistP256,
+}
+
+impl PK {
+    fn bits(&self) -> u16 {
+        match &self {
+            Self::Rsa1024 => 1024,
+            Self::Rsa2048 => 2048,
+            Self::Rsa4096 => 4096,
+            Self::EcNistP256 => 256,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,7 +85,6 @@ pub enum Digest {
 pub struct AlgorithmSpec {
     pub pk: PK,
     pub digest: Digest,
-    pub bits: u16,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -120,7 +137,7 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
         } else {
             panic!("Key needs to be for decryption or for signing")
         },
-        key_bits: spec.algo.bits,
+        key_bits: spec.algo.pk.bits(),
         exponent: 0,
         for_signing: spec.capabilities.contains(&Capability::Sign),
         for_decryption: spec.capabilities.contains(&Capability::Decrypt),

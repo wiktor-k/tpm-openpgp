@@ -47,9 +47,8 @@ spec:
       tcti: "mssim:"
       handle: 0x81000027
   algo:
-    pk: RSA
+    pk: RSA-2048
     digest: SHA-256
-    bits: 2048
   capabilities:
     - sign
   auth: 123
@@ -80,9 +79,8 @@ spec:
       tcti: "mssim:"
       handle: 0x81000018
   algo:
-    pk: RSA
+    pk: RSA-2048
     digest: SHA-256
-    bits: 2048
   capabilities:
     - decrypt
   auth: 123
@@ -107,9 +105,8 @@ spec:
       tcti: "mssim:"
       handle: 0x81000028
   algo:
-    pk: RSA
+    pk: RSA-2048
     digest: SHA-256
-    bits: 2048
   capabilities:
     - decrypt
     - restrict
@@ -129,9 +126,8 @@ spec:
       tcti: "mssim:"
       parent: 0x81000028
   algo:
-    pk: RSA
+    pk: RSA-2048
     digest: SHA-256
-    bits: 2048
   capabilities:
     - sign
   auth: 123
@@ -154,9 +150,8 @@ spec:
       private: 002035531cd18d59c7e358b63b1f89ed3b2fdd12176ed5c02f5d68dfbf7f872c65ae00107170ee9bc217b4a7ed59ad11a1387aef195031690b01d6d3acd6b4f63d16006bb33737392dd1ba9753bcf81227e3dffecddc082821994e41c047e325d82ee2c3106e94d5f5bbcd935e6f80e2321f24012a24be73f231c9f6606d927016b3afd73b96df2e3f5a181cfbe436da9cf9bcefa1a1513cb63e8021fb9ad2cc81bce55d9651aa7ed8aeaccba7ba98834d759e9f3b30e21953e65a12742bc253dfbef1e8e158fcc9755acd08e3f4af4183b7b008c4ec0865b48315d346be
       unique: aa79ea1d9800af8b6556562c27dca2be827d7ca1facfd056c4effe79dca366e948e4b0f5253392ce4ea274c84f609e57edfd4848cf10e87e19b22e4bf27fc3560a8e6405a1a339969ce6d00bc4b32e1398be63f59af4c7337b4079817fd231d379dd437cb35910ce13337a6af0877c88ac2f8bc86dd902de3ffd10bdc6c5f284063f95c2c2487942472f34551691fdf8ae0f30a7a188bc73ecb776bef2a959be2cc89b425247030e2a921d505bb71e19100b17028b74e39e673dd1d35603fea424d44913e84c7744128ec2d82853d34062ea9476557a4458c70c05d7efd205ee6b89aa7b0b84daaecbf4075db8fcee2ed622dca2ee8e391e457cc88f3ac39b7d
     algo:
-      pk: RSA
+      pk: RSA-2048
       digest: SHA-256
-      bits: 2048
     capabilities:
       - sign
     auth: 123
@@ -186,9 +181,8 @@ spec:
     tpm:
       tcti: "mssim:"
   algo:
-    pk: RSA
+    pk: RSA-1024
     digest: SHA-256
-    bits: 1024
   private:
     rsa:
       prime: f69495352f2ab58db89a0a6ddb060ca0baa5ec190d1d61f0fae32cdfb7516fc9e4968b5c494c057f35dfe69136fe35434f0a3b8979551347c47a357abad0ad0b
