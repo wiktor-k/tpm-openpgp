@@ -85,9 +85,15 @@ pub struct TpmProvider {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Status {
-    pub bytes: String,
+    pub public_key: PublicKeyBytes,
     pub manu: Option<u32>,
     pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PublicKeyBytes {
+    RSA { bytes: String },
+    EC { x: String, y: String },
 }
 
 pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSITIVE>)> {

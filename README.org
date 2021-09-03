@@ -72,6 +72,13 @@ And the same file is used to retrieve it again using ~get-key~ binary:
 get-key -f key.yml
 #+END_SRC
 
+#+RESULTS:
+: public_key:
+:   RSA:
+:     bytes: a6235b59c325e5f92752bf9e30b2b2f4cedab2ed43375e0be4fb0904775d0ef77f8385d338ded56ed4fbfae4edeb17cd56b81db28683a515aef7004a5f39dfe3c2c13d604f93c6345ab209efdb1b6ad1a5949b1d8d195b2854e1c2ee7d975bc5616b98913630c2915ed0a8574e86082deb960fa20f623155fd9c78c4ecb84c70dd05b60900c57397ab77c36fddb83870a65ea3e31d539cf9b9ca82ac6def43e9508e0ff4ecaf6a186974fd226b6d0af3eae2b91330cdc27303dbbca38ecb73b7844ee42c3994b854e6dcfe30a1c433cb5c432a9f261999ff0cffaa38b068c0c1110ad97a99042f6cea0d65c43ff684b7ba45e95ddbb05110b8c9d560cd7f5331
+: manu: 1229081888
+: name: 000b6c69b7da1d7391d0046fa805915520adb39bb419554c881cfdfee56b69d6d68d
+
 Creating decryption key is just as strightforward:
 
 #+BEGIN_SRC yaml :tangle decryption.yml
@@ -126,6 +133,14 @@ And the same file is used to retrieve it again using ~get-key~ binary:
 #+BEGIN_SRC sh
 get-key -f key-nist-p256.yml
 #+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: b998133e8339fc3680808ef64c41fdceb791ccc0c4e1906b99bfd134e59be38c
+:     y: 830dc6c759441d30c843f1d5e27d5afa65dd6190359498bd57d3b5c984704ae9
+: manu: 1229081888
+: name: 000b064deda7eaebd1f0ca982fc4adcc20d6c90d64d72de5277f072ba3633de848ba
 
 Creating decryption key is just as strightforward:
 
