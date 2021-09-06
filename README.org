@@ -276,7 +276,7 @@ Inspecting ~child-full.yml~ reveals that the ~tpm~ section has been
 extended with two new properties: ~private~ and ~unique~. This is the
 private key wrapped (encrypted) using the parent key:
 
-#+BEGIN_SRC yaml :tangle no
+#+BEGIN_SRC yaml
 spec:
   provider:
     tpm:
