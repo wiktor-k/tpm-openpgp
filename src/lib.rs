@@ -168,7 +168,11 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
         }
         AlgorithmSpec::Ec { ref curve } => {
             let ecc_builder = TpmsEccParmsBuilder {
-                symmetric: None,
+                symmetric: if spec.capabilities.contains(&Capability::Restrict) {
+                    Some(Cipher::aes_256_cfb())
+                } else {
+                    None
+                },
                 scheme: if spec.capabilities.contains(&Capability::Decrypt) {
                     AsymSchemeUnion::AnySig(None)
                 } else if spec.capabilities.contains(&Capability::Sign) {
