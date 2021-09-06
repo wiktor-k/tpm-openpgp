@@ -299,7 +299,7 @@ spec:
 Except for the different configuration this key is perfectly usable in
 all operations:
 
-#+BEGIN_SRC sh :tangle no
+#+BEGIN_SRC sh
 get-key -f child-full.yml
 #+END_SRC
 
