@@ -286,6 +286,12 @@ pub fn convert_to_key_handle(
         });
 
         let key_handle: KeyHandle = handle.into();
+
+        context.tr_set_auth(
+            key_handle.into(),
+            &Auth::try_from(specification.auth.as_bytes())?,
+        )?;
+
         context.load(
             key_handle,
             Private::try_from(hex::decode(private).unwrap())?,
