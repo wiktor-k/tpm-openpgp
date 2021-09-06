@@ -90,7 +90,7 @@ pub struct TpmProvider {
     pub handle: Option<u32>,
     pub parent: Option<u32>,
     pub private: Option<String>,
-    pub unique: Option<String>,
+    pub unique: Option<PublicKeyBytes>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -104,6 +104,47 @@ pub struct Status {
 pub enum PublicKeyBytes {
     RSA { bytes: String },
     EC { x: String, y: String },
+}
+
+impl From<&PublicKeyBytes> for PublicIdUnion {
+    fn from(bytes: &PublicKeyBytes) -> Self {
+        match bytes {
+            PublicKeyBytes::RSA { bytes } => {
+                let public_modulus = hex::decode(bytes).unwrap();
+                let mut public_modulus_buffer = [0_u8; 512];
+                public_modulus_buffer[..public_modulus.len()]
+                    .clone_from_slice(&public_modulus[..public_modulus.len()]);
+
+                let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
+                    size: public_modulus.len().try_into().unwrap(),
+                    buffer: public_modulus_buffer,
+                };
+                PublicIdUnion::Rsa(Box::from(pub_buffer))
+            }
+            PublicKeyBytes::EC { x, y } => {
+                let x = hex::decode(x).unwrap();
+                let y = hex::decode(y).unwrap();
+                let x_len = x.len();
+                let y_len = y.len();
+                let mut x_buffer = [0_u8; 128];
+                x_buffer[0..x_len].clone_from_slice(&x[..x_len]);
+                let mut y_buffer = [0_u8; 128];
+                y_buffer[0..y_len].clone_from_slice(&y[..y_len]);
+
+                let pub_buffer = TPMS_ECC_POINT {
+                    x: TPM2B_ECC_PARAMETER {
+                        size: x_len as u16,
+                        buffer: x_buffer,
+                    },
+                    y: TPM2B_ECC_PARAMETER {
+                        size: y_len as u16,
+                        buffer: y_buffer,
+                    },
+                };
+                PublicIdUnion::Ecc(Box::from(pub_buffer))
+            }
+        }
+    }
 }
 
 pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSITIVE>)> {
@@ -120,6 +161,10 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
     let mut builder = Tpm2BPublicBuilder::new()
         .with_name_alg(TPM2_ALG_SHA256)
         .with_object_attributes(attributes);
+
+    if let Some(unique) = &spec.provider.tpm.unique {
+        builder = builder.with_unique(unique.into());
+    }
 
     builder = match &spec.algo {
         AlgorithmSpec::Rsa { bits, exponent } => {
@@ -149,21 +194,6 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
                 .with_type(TPM2_ALG_RSA)
                 .with_parms(PublicParmsUnion::RsaDetail(rsa_params));
 
-            if let Some(unique) = &spec.provider.tpm.unique {
-                let public_modulus = hex::decode(unique).unwrap();
-                let mut public_modulus_buffer = [0_u8; 512];
-                public_modulus_buffer[..public_modulus.len()]
-                    .clone_from_slice(&public_modulus[..public_modulus.len()]);
-
-                let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
-                    size: public_modulus.len().try_into().unwrap(),
-                    buffer: public_modulus_buffer,
-                };
-                let pub_id_union = PublicIdUnion::Rsa(Box::from(pub_buffer));
-
-                builder = builder.with_unique(pub_id_union);
-            }
-
             builder
         }
         AlgorithmSpec::Ec { ref curve } => {
@@ -188,7 +218,8 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
             builder = builder
                 .with_type(TPM2_ALG_ECC)
                 .with_parms(PublicParmsUnion::EccDetail(ecc_builder.build()?));
-            (builder, None)
+
+            builder
         }
     };
 
