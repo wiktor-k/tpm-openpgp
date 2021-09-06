@@ -13,9 +13,9 @@ to test on real device set ~TCTI~ to ~device:/dev/tpmrm0~.
 #+begin_src sh
 set -e
 set -o pipefail
-  
+
 tpm_server &
-  
+
 sleep 5
 
 tpm2_startup -c -T mssim
@@ -230,6 +230,8 @@ create-key -f decryption-nist-p384.yml
 Non persistent keys allow using unlimited number of keys that never
 use up TPM memory.
 
+*** RSA
+
 Keys need to be wrapped using a key parent that itself needs to be
 persistent:
 
@@ -276,14 +278,16 @@ Inspecting ~child-full.yml~ reveals that the ~tpm~ section has been
 extended with two new properties: ~private~ and ~unique~. This is the
 private key wrapped (encrypted) using the parent key:
 
-#+BEGIN_SRC yaml :tangle no
+#+BEGIN_SRC yaml
 spec:
   provider:
     tpm:
       tcti: "mssim:"
       parent: 0x81000028
       private: 002035531cd18d59c7e358b63b1f89ed3b2fdd12176ed5c02f5d68dfbf7f872c65ae00107170ee9bc217b4a7ed59ad11a1387aef195031690b01d6d3acd6b4f63d16006bb33737392dd1ba9753bcf81227e3dffecddc082821994e41c047e325d82ee2c3106e94d5f5bbcd935e6f80e2321f24012a24be73f231c9f6606d927016b3afd73b96df2e3f5a181cfbe436da9cf9bcefa1a1513cb63e8021fb9ad2cc81bce55d9651aa7ed8aeaccba7ba98834d759e9f3b30e21953e65a12742bc253dfbef1e8e158fcc9755acd08e3f4af4183b7b008c4ec0865b48315d346be
-      unique: aa79ea1d9800af8b6556562c27dca2be827d7ca1facfd056c4effe79dca366e948e4b0f5253392ce4ea274c84f609e57edfd4848cf10e87e19b22e4bf27fc3560a8e6405a1a339969ce6d00bc4b32e1398be63f59af4c7337b4079817fd231d379dd437cb35910ce13337a6af0877c88ac2f8bc86dd902de3ffd10bdc6c5f284063f95c2c2487942472f34551691fdf8ae0f30a7a188bc73ecb776bef2a959be2cc89b425247030e2a921d505bb71e19100b17028b74e39e673dd1d35603fea424d44913e84c7744128ec2d82853d34062ea9476557a4458c70c05d7efd205ee6b89aa7b0b84daaecbf4075db8fcee2ed622dca2ee8e391e457cc88f3ac39b7d
+      unique:
+        RSA:
+          bytes: aa79ea1d9800af8b6556562c27dca2be827d7ca1facfd056c4effe79dca366e948e4b0f5253392ce4ea274c84f609e57edfd4848cf10e87e19b22e4bf27fc3560a8e6405a1a339969ce6d00bc4b32e1398be63f59af4c7337b4079817fd231d379dd437cb35910ce13337a6af0877c88ac2f8bc86dd902de3ffd10bdc6c5f284063f95c2c2487942472f34551691fdf8ae0f30a7a188bc73ecb776bef2a959be2cc89b425247030e2a921d505bb71e19100b17028b74e39e673dd1d35603fea424d44913e84c7744128ec2d82853d34062ea9476557a4458c70c05d7efd205ee6b89aa7b0b84daaecbf4075db8fcee2ed622dca2ee8e391e457cc88f3ac39b7d
     algo:
       RSA:
         bits: 2048
@@ -295,16 +299,180 @@ spec:
 Except for the different configuration this key is perfectly usable in
 all operations:
 
-#+BEGIN_SRC sh :tangle no
+#+BEGIN_SRC sh
 get-key -f child-full.yml
 #+END_SRC
 
 #+RESULTS:
-| ---    |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| bytes: | c4c1c097f96afae8de9c3a3ece841f510acca20ed417c890e9626205672fbceaf21bb92ff680897aeb4418c52c146c5f7bab0f44762e64bea6228f7617d493b3399110339da3513f3864acf7f977b092e63200da83a31d8640a6cb50761bf90c868b35240097d85053a55e25043fcab4367c4881050aa7b52c71d2dc0155afbfd3ab50c6223e8dd119d6c7270b0d5e5c672fa8d809a38d53c98b2d126927ad6f29f243247ff56ffe0378a6fcfc09a5ef998e9b31158ae68aa323b4f6f3650c17e5ea82e131f533d3c88c6241421b0998e63e60cec498a150db07f4969430d04700ad41172b3ebc74854223128821cc16d7f7e019269909418cf4a2eff93bc92d |
-| manu:  | 1398033696                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| name:  | 000bc287d88098837a6fa7732ac5f1735996a4b5e7827fb0e82177b763b31654c77c                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-|        |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+: public_key:
+:   RSA:
+:     bytes: c4c1c097f96afae8de9c3a3ece841f510acca20ed417c890e9626205672fbceaf21bb92ff680897aeb4418c52c146c5f7bab0f44762e64bea6228f7617d493b3399110339da3513f3864acf7f977b092e63200da83a31d8640a6cb50761bf90c868b35240097d85053a55e25043fcab4367c4881050aa7b52c71d2dc0155afbfd3ab50c6223e8dd119d6c7270b0d5e5c672fa8d809a38d53c98b2d126927ad6f29f243247ff56ffe0378a6fcfc09a5ef998e9b31158ae68aa323b4f6f3650c17e5ea82e131f533d3c88c6241421b0998e63e60cec498a150db07f4969430d04700ad41172b3ebc74854223128821cc16d7f7e019269909418cf4a2eff93bc92d
+: manu: 1398033696
+: name: 000bc287d88098837a6fa7732ac5f1735996a4b5e7827fb0e82177b763b31654c77c
+
+*** EC: NIST-P256
+
+Keys need to be wrapped using a key parent that itself needs to be
+persistent:
+
+#+BEGIN_SRC yaml :tangle parent-nist-p256.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000328
+  algo:
+    EC:
+      curve: NIST-P256
+  capabilities:
+    - decrypt
+    - restrict
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f parent-nist-p256.yml
+#+END_SRC
+
+Then, we can create non-persistent key:
+
+#+BEGIN_SRC yaml :tangle child-nist-p256.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      parent: 0x81000328
+  algo:
+    EC:
+      curve: NIST-P256
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f child-nist-p256.yml | tee child-nist-p256-complete.yml
+#+END_SRC
+
+Inspecting ~child-nist-p256-complete.yml~ reveals that the ~tpm~ section
+has been extended with two new properties: ~private~ and ~unique~. This is
+the private key wrapped (encrypted) using the parent key:
+
+#+BEGIN_SRC yaml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      parent: 0x81000328
+      private: 0020f02ddfa535dfae96031629c001868c0c28358df4d8d8784536a22faa7fea90020010a27a2d5a839d5bece4c50110e189dbf67d76f6f7f68a71301791fe0db8c187b1495621d1b4776fdc2f8b184451d16fd1aacc8261005df7c86058a7fa1609dce2e5a8ec7c631398b2e57e288dbe99059de30cfabdbcd057c53763
+      unique:
+        EC:
+          x: 1f93e6eb830bfb22b6ac482f3c41770a65ab6478c5c0c4d0758b250289defc0b
+          y: c211a231b6d5313a8a78af4a621ce7766ca1c000c59e904ed3f1fa38ff54cb72
+  algo:
+    EC:
+      curve: NIST-P256
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+Except for the different configuration this key is perfectly usable in
+all operations:
+
+#+BEGIN_SRC sh
+get-key -f child-nist-p256-complete.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: 1f93e6eb830bfb22b6ac482f3c41770a65ab6478c5c0c4d0758b250289defc0b
+:     y: c211a231b6d5313a8a78af4a621ce7766ca1c000c59e904ed3f1fa38ff54cb72
+: manu: 1398033696
+: name: 000b1a7ea2e65a4c70d21c2af706ed370b20a56b28f644d19b7501345910a3a3e7cd
+
+*** EC: NIST-P384
+
+Keys need to be wrapped using a key parent that itself needs to be
+persistent:
+
+#+BEGIN_SRC yaml :tangle parent-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000428
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - decrypt
+    - restrict
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f parent-nist-p384.yml
+#+END_SRC
+
+Then, we can create non-persistent key:
+
+#+BEGIN_SRC yaml :tangle child-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      parent: 0x81000428
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f child-nist-p384.yml | tee child-nist-p384-complete.yml
+#+END_SRC
+
+Inspecting ~child-nist-p384-complete.yml~ reveals that the ~tpm~ section
+has been extended with two new properties: ~private~ and ~unique~. This is
+the private key wrapped (encrypted) using the parent key:
+
+#+BEGIN_SRC yaml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      parent: 0x81000428
+      private: 0020fb1df208021cab7898d4edba2e87966a62e4e95820ad695b8d5af40351361f9100102e21b1075be238d84a9b98471879ec2cc415b4b0309edf82dd6b5a00fa557b9dc06ea752ea36fb4dea4f9a47c5884e1d43e0fcbd40db477e4147264f202145e1c995f411406c82d444a91d67edf69c824737e32057728d9f04193b469b3759bbb033673fafec5db9fa86
+      unique:
+        EC:
+          x: cf159a49527490e60ba5cede361ca82a43d41e6754e8ddea1f57fdba9e05bd49ed62bb982994407801f95c366f85ef43
+          y: 322ee52ffde0fe5f85367f801a0cbc5f05a772e6ac86027eed64a02303683b2caa1adb0674645533cb578284ee86eaab
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+Except for the different configuration this key is perfectly usable in
+all operations:
+
+#+BEGIN_SRC sh
+get-key -f child-nist-p384-complete.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: cf159a49527490e60ba5cede361ca82a43d41e6754e8ddea1f57fdba9e05bd49ed62bb982994407801f95c366f85ef43
+:     y: 322ee52ffde0fe5f85367f801a0cbc5f05a772e6ac86027eed64a02303683b2caa1adb0674645533cb578284ee86eaab
+: manu: 1398033696
+: name: 000b1a7ea2e65a4c70d21c2af706ed370b20a56b28f644d19b7501345910a3a3e7cd
 
 ** Importing private RSA keys
 
@@ -404,9 +572,9 @@ https://nlnet.nl/project/Sequoia-TPM/ for details.
   - [X] Signing using RSA keys in the TPM
   - [X] Decryption using RSA keys in the TPM
 
-** Support for Elliptic Curve algorithms [1/5]
+** Support for Elliptic Curve algorithms [2/5]
   - [X] Creating new EC keys and persisting them in TPM memory
-  - [ ] Using non-persistent EC keys (that don't use up TPM memory)
+  - [X] Using non-persistent EC keys (that don't use up TPM memory)
   - [ ] Importing EC private keys to TPM (for already existing keys)
   - [ ] Signing using EC keys in the TPM
   - [ ] Decryption using EC keys in the TPM
@@ -430,7 +598,7 @@ https://nlnet.nl/project/Sequoia-TPM/ for details.
 ** Extending Sequoia's CLI to support private key store [/]
   - [ ] Extension to the CLI to allow specifying the location of the private key store
   - [ ] Modification to the sourec code not to rely on software private keys
- 
+
 ** Documentation for tools and the API [/]
   - [ ] Making sure all functions and items are documented
   - [ ] Including README and end-user documentation on how to use the project

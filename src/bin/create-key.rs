@@ -2,8 +2,10 @@ use std::convert::TryFrom;
 use std::fs::File;
 use std::str::FromStr;
 use tpm_openpgp::Description;
+use tpm_openpgp::PublicKeyBytes;
 use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
+use tss_esapi::constants::tss::{TPM2_ALG_ECC, TPM2_ALG_RSA};
 use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 use tss_esapi::interface_types::dynamic_handles::Persistent;
@@ -85,10 +87,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
 
         deserialized.spec.provider.tpm.private = Some(hex::encode(pk.out_private.value()));
-        deserialized.spec.provider.tpm.unique = Some(hex::encode(unsafe {
-            &pk.out_public.publicArea.unique.rsa.buffer
-                [..pk.out_public.publicArea.unique.rsa.size as usize]
-        }));
+        deserialized.spec.provider.tpm.unique = match pk.out_public.publicArea.type_ {
+            t if t == TPM2_ALG_RSA => Some(PublicKeyBytes::RSA {
+                bytes: hex::encode(unsafe {
+                    &pk.out_public.publicArea.unique.rsa.buffer
+                        [..pk.out_public.publicArea.unique.rsa.size as usize]
+                }),
+            }),
+            t if t == TPM2_ALG_ECC => Some(PublicKeyBytes::EC {
+                x: hex::encode(unsafe {
+                    &pk.out_public.publicArea.unique.ecc.x.buffer
+                        [..pk.out_public.publicArea.unique.ecc.x.size as usize]
+                }),
+                y: hex::encode(unsafe {
+                    &pk.out_public.publicArea.unique.ecc.y.buffer
+                        [..pk.out_public.publicArea.unique.ecc.y.size as usize]
+                }),
+            }),
+            t => panic!("Unsupported public area type: {}", t),
+        };
         println!("{}", serde_yaml::to_string(&deserialized)?);
     }
     Ok(())
