@@ -116,7 +116,7 @@ impl From<&PublicKeyBytes> for PublicIdUnion {
                     .clone_from_slice(&public_modulus[..public_modulus.len()]);
 
                 let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
-                    size: public_modulus.len().try_into().unwrap(),
+                    size: public_modulus.len() as u16,
                     buffer: public_modulus_buffer,
                 };
                 PublicIdUnion::Rsa(Box::from(pub_buffer))
@@ -124,20 +124,18 @@ impl From<&PublicKeyBytes> for PublicIdUnion {
             PublicKeyBytes::EC { x, y } => {
                 let x = hex::decode(x).unwrap();
                 let y = hex::decode(y).unwrap();
-                let x_len = x.len();
-                let y_len = y.len();
                 let mut x_buffer = [0_u8; 128];
-                x_buffer[0..x_len].clone_from_slice(&x[..x_len]);
+                x_buffer[0..x.len()].clone_from_slice(&x[..x.len()]);
                 let mut y_buffer = [0_u8; 128];
-                y_buffer[0..y_len].clone_from_slice(&y[..y_len]);
+                y_buffer[0..y.len()].clone_from_slice(&y[..y.len()]);
 
                 let pub_buffer = TPMS_ECC_POINT {
                     x: TPM2B_ECC_PARAMETER {
-                        size: x_len as u16,
+                        size: x.len() as u16,
                         buffer: x_buffer,
                     },
                     y: TPM2B_ECC_PARAMETER {
-                        size: y_len as u16,
+                        size: y.len() as u16,
                         buffer: y_buffer,
                     },
                 };
