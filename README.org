@@ -394,6 +394,9 @@ decrypt-raw -f decryption.yml < encrypted
 
 * Work plan
 
+Work on this project is being sponsored by NLnet. See
+https://nlnet.nl/project/Sequoia-TPM/ for details.
+
 ** Signing and decryption using RSA keys [5/5]
   - [X] Creating new RSA keys and persisting them in TPM memory
   - [X] Using non-persistent RSA keys (that don't use up TPM memory)
