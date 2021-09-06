@@ -42,7 +42,6 @@ pub enum PrivateKeyMaterial {
 pub struct PrivateRsaKeyMaterial {
     pub prime: String,
     pub modulus: String,
-    pub exponent: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -58,7 +57,7 @@ pub enum Capability {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AlgorithmSpec {
     #[serde(rename = "RSA")]
-    Rsa { bits: u16 },
+    Rsa { bits: u16, exponent: Option<u32> },
     #[serde(rename = "EC")]
     Ec { curve: EcCurve },
 }
@@ -123,8 +122,8 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
         .with_object_attributes(attributes);
 
     let (builder, private) = match &spec.algo {
-        AlgorithmSpec::Rsa { bits } => {
-            let mut rsa_params_builder = TpmsRsaParmsBuilder {
+        AlgorithmSpec::Rsa { bits, exponent } => {
+            let rsa_params_builder = TpmsRsaParmsBuilder {
                 symmetric: if spec.capabilities.contains(&Capability::Restrict) {
                     Some(SymmetricDefinitionObject::try_from(Cipher::aes_256_cfb())?.into())
                 } else {
@@ -138,14 +137,13 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
                     panic!("Key needs to be for decryption or for signing")
                 },
                 key_bits: *bits,
-                exponent: 0,
+                exponent: exponent.unwrap_or(0),
                 for_signing: spec.capabilities.contains(&Capability::Sign),
                 for_decryption: spec.capabilities.contains(&Capability::Decrypt),
                 restricted: spec.capabilities.contains(&Capability::Restrict),
             };
 
             let private = if let Some(PrivateKeyMaterial::Rsa(ref private_rsa)) = spec.private {
-                rsa_params_builder.exponent = private_rsa.exponent;
                 let public_modulus = hex::decode(&private_rsa.modulus).unwrap();
                 let mut public_modulus_buffer = [0u8; 512];
                 public_modulus_buffer[..public_modulus.len()]
@@ -156,7 +154,6 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
                     buffer: public_modulus_buffer,
                 };
                 builder = builder.with_unique(PublicIdUnion::Rsa(Box::from(pub_buffer)));
-                rsa_params_builder.key_bits = pub_buffer.size * 8;
 
                 let key_prime = hex::decode(&private_rsa.prime).unwrap();
                 let mut key_prime_buffer = [0u8; 256];
