@@ -392,6 +392,88 @@ get-key -f child-nist-p256-complete.yml
 : manu: 1398033696
 : name: 000b1a7ea2e65a4c70d21c2af706ed370b20a56b28f644d19b7501345910a3a3e7cd
 
+*** EC: NIST-P384
+
+Keys need to be wrapped using a key parent that itself needs to be
+persistent:
+
+#+BEGIN_SRC yaml :tangle parent-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000428
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - decrypt
+    - restrict
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f parent-nist-p384.yml
+#+END_SRC
+
+Then, we can create non-persistent key:
+
+#+BEGIN_SRC yaml :tangle child-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      parent: 0x81000428
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f child-nist-p384.yml | tee child-nist-p384-complete.yml
+#+END_SRC
+
+Inspecting ~child-nist-p384-complete.yml~ reveals that the ~tpm~ section
+has been extended with two new properties: ~private~ and ~unique~. This is
+the private key wrapped (encrypted) using the parent key:
+
+#+BEGIN_SRC yaml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      parent: 0x81000428
+      private: 0020fb1df208021cab7898d4edba2e87966a62e4e95820ad695b8d5af40351361f9100102e21b1075be238d84a9b98471879ec2cc415b4b0309edf82dd6b5a00fa557b9dc06ea752ea36fb4dea4f9a47c5884e1d43e0fcbd40db477e4147264f202145e1c995f411406c82d444a91d67edf69c824737e32057728d9f04193b469b3759bbb033673fafec5db9fa86
+      unique:
+        EC:
+          x: cf159a49527490e60ba5cede361ca82a43d41e6754e8ddea1f57fdba9e05bd49ed62bb982994407801f95c366f85ef43
+          y: 322ee52ffde0fe5f85367f801a0cbc5f05a772e6ac86027eed64a02303683b2caa1adb0674645533cb578284ee86eaab
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+Except for the different configuration this key is perfectly usable in
+all operations:
+
+#+BEGIN_SRC sh
+get-key -f child-nist-p384-complete.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: cf159a49527490e60ba5cede361ca82a43d41e6754e8ddea1f57fdba9e05bd49ed62bb982994407801f95c366f85ef43
+:     y: 322ee52ffde0fe5f85367f801a0cbc5f05a772e6ac86027eed64a02303683b2caa1adb0674645533cb578284ee86eaab
+: manu: 1398033696
+: name: 000b1a7ea2e65a4c70d21c2af706ed370b20a56b28f644d19b7501345910a3a3e7cd
+
 ** Importing private RSA keys
 
 It is also possible to import already existing private keys into the TPM:
