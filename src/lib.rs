@@ -121,7 +121,7 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
         .with_name_alg(TPM2_ALG_SHA256)
         .with_object_attributes(attributes);
 
-    let (builder, private) = match &spec.algo {
+    builder = match &spec.algo {
         AlgorithmSpec::Rsa { bits, exponent } => {
             let rsa_params_builder = TpmsRsaParmsBuilder {
                 symmetric: if spec.capabilities.contains(&Capability::Restrict) {
@@ -141,41 +141,6 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
                 for_signing: spec.capabilities.contains(&Capability::Sign),
                 for_decryption: spec.capabilities.contains(&Capability::Decrypt),
                 restricted: spec.capabilities.contains(&Capability::Restrict),
-            };
-
-            let private = if let Some(PrivateKeyMaterial::Rsa(ref private_rsa)) = spec.private {
-                let public_modulus = hex::decode(&private_rsa.modulus).unwrap();
-                let mut public_modulus_buffer = [0u8; 512];
-                public_modulus_buffer[..public_modulus.len()]
-                    .clone_from_slice(&public_modulus[..public_modulus.len()]);
-
-                let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
-                    size: public_modulus.len().try_into().unwrap(),
-                    buffer: public_modulus_buffer,
-                };
-                builder = builder.with_unique(PublicIdUnion::Rsa(Box::from(pub_buffer)));
-
-                let key_prime = hex::decode(&private_rsa.prime).unwrap();
-                let mut key_prime_buffer = [0u8; 256];
-                key_prime_buffer[..key_prime.len()].clone_from_slice(&key_prime[..key_prime.len()]);
-                let key_prime_len = key_prime.len().try_into().unwrap();
-
-                Some(TPM2B_SENSITIVE {
-                    size: key_prime_len,
-                    sensitiveArea: TPMT_SENSITIVE {
-                        sensitiveType: TPM2_ALG_RSA,
-                        authValue: Default::default(),
-                        seedValue: Default::default(),
-                        sensitive: TPMU_SENSITIVE_COMPOSITE {
-                            rsa: TPM2B_PRIVATE_KEY_RSA {
-                                size: key_prime_len,
-                                buffer: key_prime_buffer,
-                            },
-                        },
-                    },
-                })
-            } else {
-                None
             };
 
             let rsa_params = rsa_params_builder.build()?;
@@ -198,7 +163,8 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
 
                 builder = builder.with_unique(pub_id_union);
             }
-            (builder, private)
+
+            builder
         }
         AlgorithmSpec::Ec { ref curve } => {
             let ecc_builder = TpmsEccParmsBuilder {
@@ -220,6 +186,41 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
                 .with_parms(PublicParmsUnion::EccDetail(ecc_builder.build()?));
             (builder, None)
         }
+    };
+
+    let private = if let Some(PrivateKeyMaterial::Rsa(ref private_rsa)) = spec.private {
+        let public_modulus = hex::decode(&private_rsa.modulus).unwrap();
+        let mut public_modulus_buffer = [0u8; 512];
+        public_modulus_buffer[..public_modulus.len()]
+            .clone_from_slice(&public_modulus[..public_modulus.len()]);
+
+        let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
+            size: public_modulus.len().try_into().unwrap(),
+            buffer: public_modulus_buffer,
+        };
+        builder = builder.with_unique(PublicIdUnion::Rsa(Box::from(pub_buffer)));
+
+        let key_prime = hex::decode(&private_rsa.prime).unwrap();
+        let mut key_prime_buffer = [0u8; 256];
+        key_prime_buffer[..key_prime.len()].clone_from_slice(&key_prime[..key_prime.len()]);
+        let key_prime_len = key_prime.len().try_into().unwrap();
+
+        Some(TPM2B_SENSITIVE {
+            size: key_prime_len,
+            sensitiveArea: TPMT_SENSITIVE {
+                sensitiveType: TPM2_ALG_RSA,
+                authValue: Default::default(),
+                seedValue: Default::default(),
+                sensitive: TPMU_SENSITIVE_COMPOSITE {
+                    rsa: TPM2B_PRIVATE_KEY_RSA {
+                        size: key_prime_len,
+                        buffer: key_prime_buffer,
+                    },
+                },
+            },
+        })
+    } else {
+        None
     };
 
     Ok((builder.build()?, private))
