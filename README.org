@@ -11,14 +11,17 @@ First, we assume that we'll use TPM 2 simulator package. If you want
 to test on real device set ~TCTI~ to ~device:/dev/tpmrm0~.
 
 #+begin_src sh
-  tpm_server &
+set -e
+set -o pipefail
   
-  sleep 5
+tpm_server &
   
-  tpm2_startup -c -T mssim
-  
-  TCTI=mssim:
-  PATH=$PATH:./target/debug
+sleep 5
+
+tpm2_startup -c -T mssim
+
+TCTI=mssim:
+PATH=$PATH:./target/debug
 #+end_src
 
 To generate a number of random bytes using the specified TPM:
@@ -34,6 +37,8 @@ draw-bytes --tcti $TCTI
 
 This crate uses descriptive documents for configuring key properties.
 
+*** RSA
+
 The following configuration creates RSA-2048 signing key and persists
 it at the handle ~0x01000027~. ~123~ is used as a sample auth value (PIN).
 
@@ -44,9 +49,8 @@ spec:
       tcti: "mssim:"
       handle: 0x81000027
   algo:
-    pk: RSA
-    digest: SHA-256
-    bits: 2048
+    RSA:
+      bits: 2048
   capabilities:
     - sign
   auth: 123
@@ -68,6 +72,13 @@ And the same file is used to retrieve it again using ~get-key~ binary:
 get-key -f key.yml
 #+END_SRC
 
+#+RESULTS:
+: public_key:
+:   RSA:
+:     bytes: a6235b59c325e5f92752bf9e30b2b2f4cedab2ed43375e0be4fb0904775d0ef77f8385d338ded56ed4fbfae4edeb17cd56b81db28683a515aef7004a5f39dfe3c2c13d604f93c6345ab209efdb1b6ad1a5949b1d8d195b2854e1c2ee7d975bc5616b98913630c2915ed0a8574e86082deb960fa20f623155fd9c78c4ecb84c70dd05b60900c57397ab77c36fddb83870a65ea3e31d539cf9b9ca82ac6def43e9508e0ff4ecaf6a186974fd226b6d0af3eae2b91330cdc27303dbbca38ecb73b7844ee42c3994b854e6dcfe30a1c433cb5c432a9f261999ff0cffaa38b068c0c1110ad97a99042f6cea0d65c43ff684b7ba45e95ddbb05110b8c9d560cd7f5331
+: manu: 1229081888
+: name: 000b6c69b7da1d7391d0046fa805915520adb39bb419554c881cfdfee56b69d6d68d
+
 Creating decryption key is just as strightforward:
 
 #+BEGIN_SRC yaml :tangle decryption.yml
@@ -77,9 +88,8 @@ spec:
       tcti: "mssim:"
       handle: 0x81000018
   algo:
-    pk: RSA
-    digest: SHA-256
-    bits: 2048
+    RSA:
+      bits: 2048
   capabilities:
     - decrypt
   auth: 123
@@ -87,6 +97,132 @@ spec:
 
 #+BEGIN_SRC sh
 create-key -f decryption.yml
+#+END_SRC
+
+*** EC: NIST-P256
+
+The following configuration creates NIST-P256 signing key and persists
+it at the handle ~0x01000127~. ~123~ is used as a sample auth value (PIN).
+
+#+BEGIN_SRC yaml :tangle key-nist-p256.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000127
+  algo:
+    EC:
+      curve: NIST-P256
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+The key description (~key-nist-p256.yml~) is being read by the ~create-key~
+binary that persists that key:
+
+#+BEGIN_SRC sh
+create-key -f key-nist-p256.yml
+#+END_SRC
+
+Presence of the key can be checked by using ~tpm2_getcap
+handles-persistent~ command from TSS suite of tools.
+
+And the same file is used to retrieve it again using ~get-key~ binary:
+
+#+BEGIN_SRC sh
+get-key -f key-nist-p256.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: b998133e8339fc3680808ef64c41fdceb791ccc0c4e1906b99bfd134e59be38c
+:     y: 830dc6c759441d30c843f1d5e27d5afa65dd6190359498bd57d3b5c984704ae9
+: manu: 1229081888
+: name: 000b064deda7eaebd1f0ca982fc4adcc20d6c90d64d72de5277f072ba3633de848ba
+
+Creating decryption key is just as strightforward:
+
+#+BEGIN_SRC yaml :tangle decryption-nist-p256.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000118
+  algo:
+    EC:
+      curve: NIST-P256
+  capabilities:
+    - decrypt
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f decryption-nist-p256.yml
+#+END_SRC
+
+*** EC: NIST-P384
+
+The following configuration creates NIST-P384 signing key and persists
+it at the handle ~0x01000227~. ~123~ is used as a sample auth value (PIN).
+
+#+BEGIN_SRC yaml :tangle key-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000227
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+The key description (~key-nist-p384.yml~) is being read by the ~create-key~
+binary that persists that key:
+
+#+BEGIN_SRC sh
+create-key -f key-nist-p384.yml
+#+END_SRC
+
+Presence of the key can be checked by using ~tpm2_getcap
+handles-persistent~ command from TSS suite of tools.
+
+And the same file is used to retrieve it again using ~get-key~ binary:
+
+#+BEGIN_SRC sh
+get-key -f key-nist-p384.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: b5d6885b6774c8a1a944b4559f26b931df031c893bc05139fc54c876b01401253ecea26ea17fa70c017bb5b4d6bb5885
+:     y: d29cda6bc9742e49b030db3ec9004217ba8fd052b7d26fc7bddbbe7cb9854fabf7cdc5978ebb8fed9383d387a07bcdf9
+: manu: 1229081888
+: name: 000b8e28e3d95570efc686bb21f5329a658fe09321d38b496fe02749251e28a07ef5
+
+Creating decryption key is just as strightforward:
+
+#+BEGIN_SRC yaml :tangle decryption-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000218
+  algo:
+    EC:
+      curve: NIST-P384
+  capabilities:
+    - decrypt
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f decryption-nist-p384.yml
 #+END_SRC
 
 ** Creating non-persistent keys
@@ -104,9 +240,8 @@ spec:
       tcti: "mssim:"
       handle: 0x81000028
   algo:
-    pk: RSA
-    digest: SHA-256
-    bits: 2048
+    RSA:
+      bits: 2048
   capabilities:
     - decrypt
     - restrict
@@ -126,9 +261,8 @@ spec:
       tcti: "mssim:"
       parent: 0x81000028
   algo:
-    pk: RSA
-    digest: SHA-256
-    bits: 2048
+    RSA:
+      bits: 2048
   capabilities:
     - sign
   auth: 123
@@ -151,9 +285,8 @@ spec:
       private: 002035531cd18d59c7e358b63b1f89ed3b2fdd12176ed5c02f5d68dfbf7f872c65ae00107170ee9bc217b4a7ed59ad11a1387aef195031690b01d6d3acd6b4f63d16006bb33737392dd1ba9753bcf81227e3dffecddc082821994e41c047e325d82ee2c3106e94d5f5bbcd935e6f80e2321f24012a24be73f231c9f6606d927016b3afd73b96df2e3f5a181cfbe436da9cf9bcefa1a1513cb63e8021fb9ad2cc81bce55d9651aa7ed8aeaccba7ba98834d759e9f3b30e21953e65a12742bc253dfbef1e8e158fcc9755acd08e3f4af4183b7b008c4ec0865b48315d346be
       unique: aa79ea1d9800af8b6556562c27dca2be827d7ca1facfd056c4effe79dca366e948e4b0f5253392ce4ea274c84f609e57edfd4848cf10e87e19b22e4bf27fc3560a8e6405a1a339969ce6d00bc4b32e1398be63f59af4c7337b4079817fd231d379dd437cb35910ce13337a6af0877c88ac2f8bc86dd902de3ffd10bdc6c5f284063f95c2c2487942472f34551691fdf8ae0f30a7a188bc73ecb776bef2a959be2cc89b425247030e2a921d505bb71e19100b17028b74e39e673dd1d35603fea424d44913e84c7744128ec2d82853d34062ea9476557a4458c70c05d7efd205ee6b89aa7b0b84daaecbf4075db8fcee2ed622dca2ee8e391e457cc88f3ac39b7d
     algo:
-      pk: RSA
-      digest: SHA-256
-      bits: 2048
+      RSA:
+        bits: 2048
     capabilities:
       - sign
     auth: 123
@@ -162,7 +295,7 @@ spec:
 Except for the different configuration this key is perfectly usable in
 all operations:
 
-#+BEGIN_SRC sh
+#+BEGIN_SRC sh :tangle no
 get-key -f child-full.yml
 #+END_SRC
 
@@ -183,9 +316,8 @@ spec:
     tpm:
       tcti: "mssim:"
   algo:
-    pk: RSA
-    digest: SHA-256
-    bits: 1024
+    RSA:
+      bits: 1024
   private:
     rsa:
       prime: f69495352f2ab58db89a0a6ddb060ca0baa5ec190d1d61f0fae32cdfb7516fc9e4968b5c494c057f35dfe69136fe35434f0a3b8979551347c47a357abad0ad0b
@@ -262,6 +394,9 @@ decrypt-raw -f decryption.yml < encrypted
 
 * Work plan
 
+Work on this project is being sponsored by NLnet. See
+https://nlnet.nl/project/Sequoia-TPM/ for details.
+
 ** Signing and decryption using RSA keys [5/5]
   - [X] Creating new RSA keys and persisting them in TPM memory
   - [X] Using non-persistent RSA keys (that don't use up TPM memory)
@@ -269,8 +404,8 @@ decrypt-raw -f decryption.yml < encrypted
   - [X] Signing using RSA keys in the TPM
   - [X] Decryption using RSA keys in the TPM
 
-** Support for Elliptic Curve algorithms [/]
-  - [ ] Creating new EC keys and persisting them in TPM memory
+** Support for Elliptic Curve algorithms [1/5]
+  - [X] Creating new EC keys and persisting them in TPM memory
   - [ ] Using non-persistent EC keys (that don't use up TPM memory)
   - [ ] Importing EC private keys to TPM (for already existing keys)
   - [ ] Signing using EC keys in the TPM

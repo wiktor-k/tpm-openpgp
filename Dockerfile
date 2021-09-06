@@ -53,9 +53,7 @@ RUN emacs -Q --batch --eval " \
         (with-current-buffer (find-file-noselect file) \
           (org-babel-tangle))))" README.org
 
-RUN chmod +x README.sh
-
-RUN ./README.sh
+RUN /bin/bash -x ./README.sh
 
 RUN cargo test
 

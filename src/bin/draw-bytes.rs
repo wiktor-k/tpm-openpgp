@@ -19,7 +19,7 @@ struct Opt {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
     let tcti = Tcti::from_str(&opt.tcti)?;
-    let mut context = unsafe { Context::new(tcti)? };
+    let mut context = Context::new(tcti)?;
     let digest = context.get_random(opt.size)?;
     let bytes: &[u8] = digest.value();
     for byte in bytes {
