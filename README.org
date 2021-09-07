@@ -501,16 +501,18 @@ spec:
 
 Using these keys is the same as for any other type of key:
 
-#+BEGIN_SRC sh
+#+BEGIN_SRC sh :results verbatim
 get-key -f private-key.yml
 #+END_SRC
 
 #+RESULTS:
-| ---    |                                                                                                                                                                                                                                                                  |
-| bytes: | cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523 |
-| manu:  | 1229081888                                                                                                                                                                                                                                                       |
-| name:  | 000b224c58d77459e7ebc304d8bea0d84f8d66d72695aec224d3b4eb10bec9323e2c                                                                                                                                                                                             |
-|        |                                                                                                                                                                                                                                                                  |
+: ---
+: public_key:
+:   RSA:
+:     bytes: cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523
+: manu: 1398033696
+: name: 000bb0369f40552df81f3bda82053e1974ffb5e2ca32999c602ee67428703e8211ad
+: 
 
 *** EC: NIST-P256
 
