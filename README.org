@@ -540,12 +540,47 @@ get-key -f private-key-nist-p256.yml
 #+END_SRC
 
 #+RESULTS:
-| ---    |                                                                                                                                                                                                                                                                  |
-| bytes: | cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523 |
-| manu:  | 1229081888                                                                                                                                                                                                                                                       |
-| name:  | 000b224c58d77459e7ebc304d8bea0d84f8d66d72695aec224d3b4eb10bec9323e2c                                                                                                                                                                                             |
-|        |                                                                                                                                                                                                                                                                  |
+: public_key:
+:   EC:
+:     x: 12b2a3f6deb274df7dfa6a9e6e13dea9b9515d590a666966defef5f86d1ecadf
+:     y: 4795cf10a894226f1778dcd4185db5c4d42a9c10591a2211812ef5b654094f81
+: manu: 1229081888
+: name: 000b23684f8b125caad589545052d8779253a6ef854f9290f7c8b670cb2c4165aa18
 
+*** EC: NIST-P384
+
+#+BEGIN_SRC yaml :tangle private-key-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "device:/dev/tpmrm0"
+  algo:
+    EC:
+      curve: NIST-P384
+  private:
+    ec:
+      parameter: 595e7774730018cc3942e4b713c2a288b8dbcec147ede1ed3c3760553bc39a7a092db968df4da71267c9586e69e6ffc7
+      points:
+        x: 88eae33668dfc22f1bec8ca87bef7dab67562b1b1bf10101b5a655212b31356d46963624e11f0b30ffb7bc60f315fb09
+        y: 5c1ec2296140c2404a605e6c65b85c10d3e5807feb4d15f674e4318c7887e03408e98a348c413b16ad615484ed84cf2f
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+Using these keys is the same as for any other type of key:
+
+#+BEGIN_SRC sh
+get-key -f private-key-nist-p384.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: 88eae33668dfc22f1bec8ca87bef7dab67562b1b1bf10101b5a655212b31356d46963624e11f0b30ffb7bc60f315fb09
+:     y: 5c1ec2296140c2404a605e6c65b85c10d3e5807feb4d15f674e4318c7887e03408e98a348c413b16ad615484ed84cf2f
+: manu: 1398033696
+: name: 000b4c2c9cf06ff4af433703b1459bf1529311fcc7a24c6e407594ba071a7bc82060
 
 ** Signing with RSA keys
 
