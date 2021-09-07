@@ -514,6 +514,33 @@ get-key -f private-key.yml
 
 *** EC: NIST-P256
 
+To generate a new P-256 key use the following openssl command:
+
+#+BEGIN_SRC sh :results verbatim
+openssl ecparam -name secp256r1 -genkey -noout -noout | openssl ec -in - -text -noout -conv_form uncompressed
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Private-Key: (256 bit)
+priv:
+    98:20:9e:ea:87:b0:63:ec:a8:51:09:ef:1b:8a:46:
+    c0:97:ab:25:2c:59:fb:a1:2f:38:99:e3:8f:e5:4e:
+    d4:1b
+pub:
+    04:12:b2:a3:f6:de:b2:74:df:7d:fa:6a:9e:6e:13:
+    de:a9:b9:51:5d:59:0a:66:69:66:de:fe:f5:f8:6d:
+    1e:ca:df:47:95:cf:10:a8:94:22:6f:17:78:dc:d4:
+    18:5d:b5:c4:d4:2a:9c:10:59:1a:22:11:81:2e:f5:
+    b6:54:09:4f:81
+ASN1 OID: prime256v1
+NIST CURVE: P-256
+#+end_example
+
+The `ec.parameter` value should reflect the `priv` field with all
+bytes concatenated. The public part: `ec.points` would be two halves
+of the `pub` openssl value (omitting first `04` byte).
+
 #+BEGIN_SRC yaml :tangle private-key-nist-p256.yml
 spec:
   provider:
@@ -548,6 +575,36 @@ get-key -f private-key-nist-p256.yml
 : name: 000b23684f8b125caad589545052d8779253a6ef854f9290f7c8b670cb2c4165aa18
 
 *** EC: NIST-P384
+
+To generate a new P-384 key use the following openssl command:
+
+#+BEGIN_SRC sh :results verbatim
+openssl ecparam -name secp384r1 -genkey -noout -noout | openssl ec -in - -text -noout -conv_form uncompressed
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Private-Key: (384 bit)
+priv:
+    a1:79:12:49:9c:40:12:98:ed:ec:db:89:f7:a3:08:
+    75:74:6f:0e:fc:44:3e:be:d1:3a:05:3f:1a:2f:c6:
+    45:97:3d:d3:5a:93:27:1c:6d:7f:25:79:36:95:bd:
+    1c:4f:be
+pub:
+    04:e1:d7:38:d7:54:2b:83:b2:e8:bd:4d:cd:03:6f:
+    f8:1c:a2:ed:08:30:1c:26:34:d2:c4:24:6c:3e:79:
+    ae:e9:90:36:7c:f7:3b:c2:2c:29:50:da:e9:98:d7:
+    97:a3:95:75:5e:cc:c5:61:a0:38:fd:76:ce:60:2a:
+    7a:6c:0e:f4:51:db:3f:75:21:ac:ab:96:50:f7:77:
+    09:b5:32:69:2d:93:23:98:e2:aa:09:ae:18:e4:20:
+    db:16:56:57:12:c3:6f
+ASN1 OID: secp384r1
+NIST CURVE: P-384
+#+end_example
+
+The `ec.parameter` value should reflect the `priv` field with all
+bytes concatenated. The public part: `ec.points` would be two halves
+of the `pub` openssl value (omitting first `04` byte).
 
 #+BEGIN_SRC yaml :tangle private-key-nist-p384.yml
 spec:
