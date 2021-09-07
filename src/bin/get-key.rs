@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 use std::fs::File;
 use std::str::FromStr;
-use tpm_openpgp::Description;
+use tpm_openpgp::{Description, EcPublic, RsaPublic};
 use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
 use tss_esapi::constants::PropertyTag;
@@ -58,19 +58,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut key = pub_key.buffer.to_vec();
             key.truncate(pub_key.size.try_into().unwrap()); // should not fail on supported targets
                                                             //eprintln!("key = {:#?}", key);
-            tpm_openpgp::PublicKeyBytes::RSA {
+            tpm_openpgp::PublicKeyBytes::RSA(RsaPublic {
                 bytes: hex::encode(key),
-            }
+            })
         }
         PublicIdUnion::Ecc(pub_key) => {
             let mut x = pub_key.x.buffer.to_vec();
             x.truncate(pub_key.x.size.try_into().unwrap()); // should not fail on supported targets
             let mut y = pub_key.y.buffer.to_vec();
             y.truncate(pub_key.y.size.try_into().unwrap()); // should not fail on supported targets
-            tpm_openpgp::PublicKeyBytes::EC {
+            tpm_openpgp::PublicKeyBytes::EC(EcPublic {
                 x: hex::encode(x),
                 y: hex::encode(y),
-            }
+            })
         }
         _ => panic!("Unsupported key type."),
     };

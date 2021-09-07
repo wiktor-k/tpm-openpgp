@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::fs::File;
 use std::str::FromStr;
 use tpm_openpgp::Description;
-use tpm_openpgp::PublicKeyBytes;
+use tpm_openpgp::{EcPublic, PublicKeyBytes, RsaPublic};
 use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
 use tss_esapi::constants::tss::{TPM2_ALG_ECC, TPM2_ALG_RSA};
@@ -26,7 +26,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
     let mut deserialized: Description = serde_yaml::from_reader(File::open(opt.file)?)?;
-    eprintln!("{:#?}", deserialized);
 
     let tcti = Tcti::from_str(&deserialized.spec.provider.tpm.tcti)?;
 
@@ -88,13 +87,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         deserialized.spec.provider.tpm.private = Some(hex::encode(pk.out_private.value()));
         deserialized.spec.provider.tpm.unique = match pk.out_public.publicArea.type_ {
-            t if t == TPM2_ALG_RSA => Some(PublicKeyBytes::RSA {
+            t if t == TPM2_ALG_RSA => Some(PublicKeyBytes::RSA(RsaPublic {
                 bytes: hex::encode(unsafe {
                     &pk.out_public.publicArea.unique.rsa.buffer
                         [..pk.out_public.publicArea.unique.rsa.size as usize]
                 }),
-            }),
-            t if t == TPM2_ALG_ECC => Some(PublicKeyBytes::EC {
+            })),
+            t if t == TPM2_ALG_ECC => Some(PublicKeyBytes::EC(EcPublic {
                 x: hex::encode(unsafe {
                     &pk.out_public.publicArea.unique.ecc.x.buffer
                         [..pk.out_public.publicArea.unique.ecc.x.size as usize]
@@ -103,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &pk.out_public.publicArea.unique.ecc.y.buffer
                         [..pk.out_public.publicArea.unique.ecc.y.size as usize]
                 }),
-            }),
+            })),
             t => panic!("Unsupported public area type: {}", t),
         };
         println!("{}", serde_yaml::to_string(&deserialized)?);

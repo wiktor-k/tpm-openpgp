@@ -474,9 +474,11 @@ get-key -f child-nist-p384-complete.yml
 : manu: 1398033696
 : name: 000b1a7ea2e65a4c70d21c2af706ed370b20a56b28f644d19b7501345910a3a3e7cd
 
-** Importing private RSA keys
+** Importing private keys
 
-It is also possible to import already existing private keys into the TPM:
+It is also possible to import already existing private keys into the TPM.
+
+*** RSA
 
 #+BEGIN_SRC yaml :tangle private-key.yml
 spec:
@@ -489,7 +491,8 @@ spec:
   private:
     rsa:
       prime: f69495352f2ab58db89a0a6ddb060ca0baa5ec190d1d61f0fae32cdfb7516fc9e4968b5c494c057f35dfe69136fe35434f0a3b8979551347c47a357abad0ad0b
-      modulus: cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523
+      modulus:
+        bytes: cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523
       exponent: 65537
   capabilities:
     - sign
@@ -498,16 +501,145 @@ spec:
 
 Using these keys is the same as for any other type of key:
 
-#+BEGIN_SRC sh
+#+BEGIN_SRC sh :results verbatim
 get-key -f private-key.yml
 #+END_SRC
 
 #+RESULTS:
-| ---    |                                                                                                                                                                                                                                                                  |
-| bytes: | cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523 |
-| manu:  | 1229081888                                                                                                                                                                                                                                                       |
-| name:  | 000b224c58d77459e7ebc304d8bea0d84f8d66d72695aec224d3b4eb10bec9323e2c                                                                                                                                                                                             |
-|        |                                                                                                                                                                                                                                                                  |
+: ---
+: public_key:
+:   RSA:
+:     bytes: cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523
+: manu: 1398033696
+: name: 000bb0369f40552df81f3bda82053e1974ffb5e2ca32999c602ee67428703e8211ad
+: 
+
+*** EC: NIST-P256
+
+To generate a new P-256 key use the following openssl command:
+
+#+BEGIN_SRC sh :results verbatim
+openssl ecparam -name secp256r1 -genkey -noout -noout | openssl ec -in - -text -noout -conv_form uncompressed
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Private-Key: (256 bit)
+priv:
+    98:20:9e:ea:87:b0:63:ec:a8:51:09:ef:1b:8a:46:
+    c0:97:ab:25:2c:59:fb:a1:2f:38:99:e3:8f:e5:4e:
+    d4:1b
+pub:
+    04:12:b2:a3:f6:de:b2:74:df:7d:fa:6a:9e:6e:13:
+    de:a9:b9:51:5d:59:0a:66:69:66:de:fe:f5:f8:6d:
+    1e:ca:df:47:95:cf:10:a8:94:22:6f:17:78:dc:d4:
+    18:5d:b5:c4:d4:2a:9c:10:59:1a:22:11:81:2e:f5:
+    b6:54:09:4f:81
+ASN1 OID: prime256v1
+NIST CURVE: P-256
+#+end_example
+
+The `ec.parameter` value should reflect the `priv` field with all
+bytes concatenated. The public part: `ec.points` would be two halves
+of the `pub` openssl value (omitting first `04` byte).
+
+#+BEGIN_SRC yaml :tangle private-key-nist-p256.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+  algo:
+    EC:
+      curve: NIST-P256
+  private:
+    ec:
+      parameter: 98209eea87b063eca85109ef1b8a46c097ab252c59fba12f3899e38fe54ed41b
+      points:
+        x: 12b2a3f6deb274df7dfa6a9e6e13dea9b9515d590a666966defef5f86d1ecadf
+        y: 4795cf10a894226f1778dcd4185db5c4d42a9c10591a2211812ef5b654094f81
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+Using these keys is the same as for any other type of key:
+
+#+BEGIN_SRC sh
+get-key -f private-key-nist-p256.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: 12b2a3f6deb274df7dfa6a9e6e13dea9b9515d590a666966defef5f86d1ecadf
+:     y: 4795cf10a894226f1778dcd4185db5c4d42a9c10591a2211812ef5b654094f81
+: manu: 1229081888
+: name: 000b23684f8b125caad589545052d8779253a6ef854f9290f7c8b670cb2c4165aa18
+
+*** EC: NIST-P384
+
+To generate a new P-384 key use the following openssl command:
+
+#+BEGIN_SRC sh :results verbatim
+openssl ecparam -name secp384r1 -genkey -noout -noout | openssl ec -in - -text -noout -conv_form uncompressed
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Private-Key: (384 bit)
+priv:
+    a1:79:12:49:9c:40:12:98:ed:ec:db:89:f7:a3:08:
+    75:74:6f:0e:fc:44:3e:be:d1:3a:05:3f:1a:2f:c6:
+    45:97:3d:d3:5a:93:27:1c:6d:7f:25:79:36:95:bd:
+    1c:4f:be
+pub:
+    04:e1:d7:38:d7:54:2b:83:b2:e8:bd:4d:cd:03:6f:
+    f8:1c:a2:ed:08:30:1c:26:34:d2:c4:24:6c:3e:79:
+    ae:e9:90:36:7c:f7:3b:c2:2c:29:50:da:e9:98:d7:
+    97:a3:95:75:5e:cc:c5:61:a0:38:fd:76:ce:60:2a:
+    7a:6c:0e:f4:51:db:3f:75:21:ac:ab:96:50:f7:77:
+    09:b5:32:69:2d:93:23:98:e2:aa:09:ae:18:e4:20:
+    db:16:56:57:12:c3:6f
+ASN1 OID: secp384r1
+NIST CURVE: P-384
+#+end_example
+
+The `ec.parameter` value should reflect the `priv` field with all
+bytes concatenated. The public part: `ec.points` would be two halves
+of the `pub` openssl value (omitting first `04` byte).
+
+#+BEGIN_SRC yaml :tangle private-key-nist-p384.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+  algo:
+    EC:
+      curve: NIST-P384
+  private:
+    ec:
+      parameter: 595e7774730018cc3942e4b713c2a288b8dbcec147ede1ed3c3760553bc39a7a092db968df4da71267c9586e69e6ffc7
+      points:
+        x: 88eae33668dfc22f1bec8ca87bef7dab67562b1b1bf10101b5a655212b31356d46963624e11f0b30ffb7bc60f315fb09
+        y: 5c1ec2296140c2404a605e6c65b85c10d3e5807feb4d15f674e4318c7887e03408e98a348c413b16ad615484ed84cf2f
+  capabilities:
+    - sign
+  auth: 123
+#+END_SRC
+
+Using these keys is the same as for any other type of key:
+
+#+BEGIN_SRC sh
+get-key -f private-key-nist-p384.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   EC:
+:     x: 88eae33668dfc22f1bec8ca87bef7dab67562b1b1bf10101b5a655212b31356d46963624e11f0b30ffb7bc60f315fb09
+:     y: 5c1ec2296140c2404a605e6c65b85c10d3e5807feb4d15f674e4318c7887e03408e98a348c413b16ad615484ed84cf2f
+: manu: 1398033696
+: name: 000b4c2c9cf06ff4af433703b1459bf1529311fcc7a24c6e407594ba071a7bc82060
 
 ** Signing with RSA keys
 
@@ -572,10 +704,10 @@ https://nlnet.nl/project/Sequoia-TPM/ for details.
   - [X] Signing using RSA keys in the TPM
   - [X] Decryption using RSA keys in the TPM
 
-** Support for Elliptic Curve algorithms [2/5]
+** Support for Elliptic Curve algorithms [3/5]
   - [X] Creating new EC keys and persisting them in TPM memory
   - [X] Using non-persistent EC keys (that don't use up TPM memory)
-  - [ ] Importing EC private keys to TPM (for already existing keys)
+  - [X] Importing EC private keys to TPM (for already existing keys)
   - [ ] Signing using EC keys in the TPM
   - [ ] Decryption using EC keys in the TPM
 
