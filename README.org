@@ -645,10 +645,10 @@ https://nlnet.nl/project/Sequoia-TPM/ for details.
   - [X] Signing using RSA keys in the TPM
   - [X] Decryption using RSA keys in the TPM
 
-** Support for Elliptic Curve algorithms [2/5]
+** Support for Elliptic Curve algorithms [3/5]
   - [X] Creating new EC keys and persisting them in TPM memory
   - [X] Using non-persistent EC keys (that don't use up TPM memory)
-  - [ ] Importing EC private keys to TPM (for already existing keys)
+  - [X] Importing EC private keys to TPM (for already existing keys)
   - [ ] Signing using EC keys in the TPM
   - [ ] Decryption using EC keys in the TPM
 
