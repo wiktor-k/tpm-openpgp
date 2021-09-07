@@ -553,7 +553,7 @@ get-key -f private-key-nist-p256.yml
 spec:
   provider:
     tpm:
-      tcti: "device:/dev/tpmrm0"
+      tcti: "mssim:"
   algo:
     EC:
       curve: NIST-P384
