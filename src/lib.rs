@@ -32,16 +32,36 @@ pub struct Specification {
     pub auth: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PrivateKeyMaterial {
     Rsa(PrivateRsaKeyMaterial),
+    Ec(EcParameter),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PrivateRsaKeyMaterial {
+    pub prime: String,
+    pub modulus: RsaPublic,
+}
+
+impl From<&PrivateRsaKeyMaterial> for TPM2B_PRIVATE_KEY_RSA {
+    fn from(private_rsa: &PrivateRsaKeyMaterial) -> Self {
+        let key_prime = hex::decode(&private_rsa.prime).unwrap();
+        let mut key_prime_buffer = [0u8; 256];
+        key_prime_buffer[..key_prime.len()].clone_from_slice(&key_prime[..key_prime.len()]);
+        let key_prime_len = key_prime.len().try_into().unwrap();
+
+        TPM2B_PRIVATE_KEY_RSA {
+            size: key_prime_len,
+            buffer: key_prime_buffer,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct PrivateRsaKeyMaterial {
-    pub prime: String,
-    pub modulus: String,
+pub struct EcParameter {
+    pub parameter: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -102,45 +122,64 @@ pub struct Status {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PublicKeyBytes {
-    RSA { bytes: String },
-    EC { x: String, y: String },
+    RSA(RsaPublic),
+    EC(EcPublic),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RsaPublic {
+    pub bytes: String,
+}
+
+impl From<&RsaPublic> for PublicIdUnion {
+    fn from(public: &RsaPublic) -> Self {
+        let public_modulus = hex::decode(&public.bytes).unwrap();
+        let mut public_modulus_buffer = [0_u8; 512];
+        public_modulus_buffer[..public_modulus.len()]
+            .clone_from_slice(&public_modulus[..public_modulus.len()]);
+
+        let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
+            size: public_modulus.len() as u16,
+            buffer: public_modulus_buffer,
+        };
+        PublicIdUnion::Rsa(Box::from(pub_buffer))
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EcPublic {
+    pub x: String,
+    pub y: String,
+}
+
+impl From<&EcPublic> for PublicIdUnion {
+    fn from(public: &EcPublic) -> Self {
+        let x = hex::decode(&public.x).unwrap();
+        let y = hex::decode(&public.y).unwrap();
+        let mut x_buffer = [0_u8; 128];
+        x_buffer[0..x.len()].clone_from_slice(&x[..x.len()]);
+        let mut y_buffer = [0_u8; 128];
+        y_buffer[0..y.len()].clone_from_slice(&y[..y.len()]);
+
+        let pub_buffer = TPMS_ECC_POINT {
+            x: TPM2B_ECC_PARAMETER {
+                size: x.len() as u16,
+                buffer: x_buffer,
+            },
+            y: TPM2B_ECC_PARAMETER {
+                size: y.len() as u16,
+                buffer: y_buffer,
+            },
+        };
+        PublicIdUnion::Ecc(Box::from(pub_buffer))
+    }
 }
 
 impl From<&PublicKeyBytes> for PublicIdUnion {
     fn from(bytes: &PublicKeyBytes) -> Self {
         match bytes {
-            PublicKeyBytes::RSA { bytes } => {
-                let public_modulus = hex::decode(bytes).unwrap();
-                let mut public_modulus_buffer = [0_u8; 512];
-                public_modulus_buffer[..public_modulus.len()]
-                    .clone_from_slice(&public_modulus[..public_modulus.len()]);
-
-                let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
-                    size: public_modulus.len() as u16,
-                    buffer: public_modulus_buffer,
-                };
-                PublicIdUnion::Rsa(Box::from(pub_buffer))
-            }
-            PublicKeyBytes::EC { x, y } => {
-                let x = hex::decode(x).unwrap();
-                let y = hex::decode(y).unwrap();
-                let mut x_buffer = [0_u8; 128];
-                x_buffer[0..x.len()].clone_from_slice(&x[..x.len()]);
-                let mut y_buffer = [0_u8; 128];
-                y_buffer[0..y.len()].clone_from_slice(&y[..y.len()]);
-
-                let pub_buffer = TPMS_ECC_POINT {
-                    x: TPM2B_ECC_PARAMETER {
-                        size: x.len() as u16,
-                        buffer: x_buffer,
-                    },
-                    y: TPM2B_ECC_PARAMETER {
-                        size: y.len() as u16,
-                        buffer: y_buffer,
-                    },
-                };
-                PublicIdUnion::Ecc(Box::from(pub_buffer))
-            }
+            PublicKeyBytes::RSA(public) => public.into(),
+            PublicKeyBytes::EC(public) => public.into(),
         }
     }
 }
@@ -221,42 +260,53 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
         }
     };
 
-    let private = if let Some(PrivateKeyMaterial::Rsa(ref private_rsa)) = spec.private {
-        let public_modulus = hex::decode(&private_rsa.modulus).unwrap();
-        let mut public_modulus_buffer = [0u8; 512];
-        public_modulus_buffer[..public_modulus.len()]
-            .clone_from_slice(&public_modulus[..public_modulus.len()]);
+    let private = match spec.private {
+        Some(PrivateKeyMaterial::Rsa(ref private_rsa)) => {
+            let rsa: TPM2B_PRIVATE_KEY_RSA = private_rsa.into();
 
-        let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
-            size: public_modulus.len().try_into().unwrap(),
-            buffer: public_modulus_buffer,
-        };
-        builder = builder.with_unique(PublicIdUnion::Rsa(Box::from(pub_buffer)));
-
-        let key_prime = hex::decode(&private_rsa.prime).unwrap();
-        let mut key_prime_buffer = [0u8; 256];
-        key_prime_buffer[..key_prime.len()].clone_from_slice(&key_prime[..key_prime.len()]);
-        let key_prime_len = key_prime.len().try_into().unwrap();
-
-        Some(TPM2B_SENSITIVE {
-            size: key_prime_len,
-            sensitiveArea: TPMT_SENSITIVE {
-                sensitiveType: TPM2_ALG_RSA,
-                authValue: Default::default(),
-                seedValue: Default::default(),
-                sensitive: TPMU_SENSITIVE_COMPOSITE {
-                    rsa: TPM2B_PRIVATE_KEY_RSA {
-                        size: key_prime_len,
-                        buffer: key_prime_buffer,
+            Some((
+                TPM2B_SENSITIVE {
+                    size: rsa.size,
+                    sensitiveArea: TPMT_SENSITIVE {
+                        sensitiveType: TPM2_ALG_RSA,
+                        authValue: Default::default(),
+                        seedValue: Default::default(),
+                        sensitive: TPMU_SENSITIVE_COMPOSITE { rsa },
                     },
                 },
-            },
-        })
-    } else {
-        None
+                (&(private_rsa.modulus)).into(),
+            ))
+        }
+        /*	Some(PrivateKeyMaterial::Ec(ref param)) => {
+            let parameter = hex::decode(&param.parameter).unwrap();
+            let mut parameter_buffer = [0u8; 128];
+            parameter_buffer[..parameter.len()].clone_from_slice(&parameter);
+                Some((
+                    TPM2B_SENSITIVE {
+                        size: parameter.len() as u16,
+                        sensitiveArea: TPMT_SENSITIVE {
+                            sensitiveType: TPM2_ALG_ECC,
+                            authValue: Default::default(),
+                            seedValue: Default::default(),
+                            sensitive: TPMU_SENSITIVE_COMPOSITE {
+                                ecc: TPM2B_ECC_PARAMETER {
+                                    size: parameter.len() as u16,
+                                    buffer: parameter_buffer,
+                                },
+                            },
+                        },
+                    },
+                    PublicIdUnion::Rsa(Box::from(pub_buffer)),
+                ))
+        },*/
+        _ => None,
     };
 
-    Ok((builder.build()?, private))
+    if let Some((sensitive, public)) = private {
+        Ok((builder.with_unique(public).build()?, Some(sensitive)))
+    } else {
+        Ok((builder.build()?, None))
+    }
 }
 
 pub fn convert_to_key_handle(
