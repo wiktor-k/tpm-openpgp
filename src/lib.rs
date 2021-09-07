@@ -59,9 +59,22 @@ impl From<&PrivateRsaKeyMaterial> for TPM2B_PRIVATE_KEY_RSA {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct EcParameter {
     pub parameter: String,
+    pub points: EcPublic,
+}
+
+impl From<&EcParameter> for TPM2B_ECC_PARAMETER {
+    fn from(param: &EcParameter) -> Self {
+        let parameter = hex::decode(&param.parameter).unwrap();
+        let mut parameter_buffer = [0u8; 128];
+        parameter_buffer[..parameter.len()].clone_from_slice(&parameter);
+        TPM2B_ECC_PARAMETER {
+            size: parameter.len() as u16,
+            buffer: parameter_buffer,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -277,28 +290,21 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
                 (&(private_rsa.modulus)).into(),
             ))
         }
-        /*	Some(PrivateKeyMaterial::Ec(ref param)) => {
-            let parameter = hex::decode(&param.parameter).unwrap();
-            let mut parameter_buffer = [0u8; 128];
-            parameter_buffer[..parameter.len()].clone_from_slice(&parameter);
-                Some((
-                    TPM2B_SENSITIVE {
-                        size: parameter.len() as u16,
-                        sensitiveArea: TPMT_SENSITIVE {
-                            sensitiveType: TPM2_ALG_ECC,
-                            authValue: Default::default(),
-                            seedValue: Default::default(),
-                            sensitive: TPMU_SENSITIVE_COMPOSITE {
-                                ecc: TPM2B_ECC_PARAMETER {
-                                    size: parameter.len() as u16,
-                                    buffer: parameter_buffer,
-                                },
-                            },
-                        },
+        Some(PrivateKeyMaterial::Ec(ref param)) => {
+            let ecc: TPM2B_ECC_PARAMETER = param.into();
+            Some((
+                TPM2B_SENSITIVE {
+                    size: ecc.size,
+                    sensitiveArea: TPMT_SENSITIVE {
+                        sensitiveType: TPM2_ALG_ECC,
+                        authValue: Default::default(),
+                        seedValue: Default::default(),
+                        sensitive: TPMU_SENSITIVE_COMPOSITE { ecc },
                     },
-                    PublicIdUnion::Rsa(Box::from(pub_buffer)),
-                ))
-        },*/
+                },
+                (&(param.points)).into(),
+            ))
+        }
         _ => None,
     };
 
