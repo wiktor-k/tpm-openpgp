@@ -26,7 +26,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
     let mut deserialized: Description = serde_yaml::from_reader(File::open(opt.file)?)?;
-    eprintln!("{:#?}", deserialized);
 
     let tcti = Tcti::from_str(&deserialized.spec.provider.tpm.tcti)?;
 
