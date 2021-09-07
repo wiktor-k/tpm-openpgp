@@ -539,9 +539,9 @@ ASN1 OID: prime256v1
 NIST CURVE: P-256
 #+end_example
 
-The `ec.parameter` value should reflect the `priv` field with all
-bytes concatenated. The public part: `ec.points` would be two halves
-of the `pub` openssl value (omitting first `04` byte).
+The =ec.parameter= value should reflect the =priv= field with all
+bytes concatenated. The public part: =ec.points= would be two halves
+of the =pub= openssl value (omitting first =04= byte).
 
 #+BEGIN_SRC yaml :tangle private-key-nist-p256.yml
 spec:
@@ -604,9 +604,9 @@ ASN1 OID: secp384r1
 NIST CURVE: P-384
 #+end_example
 
-The `ec.parameter` value should reflect the `priv` field with all
-bytes concatenated. The public part: `ec.points` would be two halves
-of the `pub` openssl value (omitting first `04` byte).
+The =ec.parameter= value should reflect the =priv= field with all
+bytes concatenated. The public part: =ec.points= would be two halves
+of the =pub= openssl value (omitting first =04= byte).
 
 #+BEGIN_SRC yaml :tangle private-key-nist-p384.yml
 spec:
