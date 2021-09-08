@@ -73,12 +73,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let signature = context.sign(key_handle, digest, scheme, validation)?;
 
-    if let SignatureData::RsaSignature(ref signature) = signature.signature {
-        let mut stdout = std::io::stdout();
-        stdout.write_all(signature)?;
-    } else {
-        panic!("Unsupported signature.");
-    }
+    let signature = match signature.signature {
+        SignatureData::RsaSignature(signature) => signature,
+        SignatureData::EcdsaSignature { ref r, ref s } => {
+            let mut sig = vec![];
+            sig.extend(r);
+            sig.extend(s);
+            sig
+        }
+    };
+
+    let mut stdout = std::io::stdout();
+    stdout.write_all(&signature)?;
 
     Ok(())
 }
