@@ -641,7 +641,9 @@ get-key -f private-key-nist-p384.yml
 : manu: 1398033696
 : name: 000b4c2c9cf06ff4af433703b1459bf1529311fcc7a24c6e407594ba071a7bc82060
 
-** Signing with RSA keys
+** Signing digests
+
+*** RSA
 
 Signing uses raw RSA keys and produces raw PKCS1.5 signatures for now.
 
@@ -675,6 +677,50 @@ echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key.yml | xxd
 000000f0: 137f 9292 8d94 d5e3 64c0 2a2b e4e8 4342  ........d.*+..CB
 #+end_example
 
+*** EC: NIST-P256
+
+Signing uses raw elliptic curve keys and produces a concatenation of R
+and S values.
+
+Ultimately these raw objects can be wrapped with protocol-specific
+structures e.g. certificates (for raw RSA keys) or OpenPGP signatures
+(for raw signatures).
+
+Signing can use any key that has been defined previously:
+
+#+BEGIN_SRC sh :results output
+echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key-nist-p256.yml | xxd
+#+END_SRC
+
+#+RESULTS:
+: 00000000: 2b10 9aca a8ec 800c 4b50 b35a a62e 6f52  +.......KP.Z..oR
+: 00000010: 5bc3 a3c9 5c68 bd2a 4588 b7e8 94f6 2923  [...\h.*E.....)#
+: 00000020: f3e4 b073 82a1 42b4 1139 e5d0 d7a3 996d  ...s..B..9.....m
+: 00000030: 8893 a60a 6171 ddc1 ecb6 2992 8382 d8d2  ....aq....).....
+
+*** EC: NIST-P384
+
+Signing uses raw elliptic curve keys and produces a concatenation of R
+and S values.
+
+Ultimately these raw objects can be wrapped with protocol-specific
+structures e.g. certificates (for raw RSA keys) or OpenPGP signatures
+(for raw signatures).
+
+Signing can use any key that has been defined previously:
+
+#+BEGIN_SRC sh :results output
+echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key-nist-p384.yml | xxd
+#+END_SRC
+
+#+RESULTS:
+: 00000000: a33b 5ed4 bbbc f6bd 6297 c696 fc10 5ae4  .;^.....b.....Z.
+: 00000010: 4a32 d807 a065 ea75 19b9 7d2f 9f05 8e09  J2...e.u..}/....
+: 00000020: a6b6 028b 2eb7 9c7f ab6e 8701 61a3 e39d  .........n..a...
+: 00000030: 23db fc1b b859 e2dd 20e5 ebc9 3503 c671  #....Y.. ...5..q
+: 00000040: 00e2 057c 3b00 86fa 84e8 4152 3b9d 9e70  ...|;.....AR;..p
+: 00000050: 5a19 05a0 f13f 64f6 ddd7 5edd 764c 6cea  Z....?d...^.vLl.
+
 ** Decryption with RSA keys
 
 Encryption and decryption works similarily to signing. The plaintext
@@ -704,11 +750,11 @@ https://nlnet.nl/project/Sequoia-TPM/ for details.
   - [X] Signing using RSA keys in the TPM
   - [X] Decryption using RSA keys in the TPM
 
-** Support for Elliptic Curve algorithms [3/5]
+** Support for Elliptic Curve algorithms [4/5]
   - [X] Creating new EC keys and persisting them in TPM memory
   - [X] Using non-persistent EC keys (that don't use up TPM memory)
   - [X] Importing EC private keys to TPM (for already existing keys)
-  - [ ] Signing using EC keys in the TPM
+  - [X] Signing using EC keys in the TPM
   - [ ] Decryption using EC keys in the TPM
 
 ** Key migration support [/]
