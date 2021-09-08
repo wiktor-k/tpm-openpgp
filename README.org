@@ -641,7 +641,9 @@ get-key -f private-key-nist-p384.yml
 : manu: 1398033696
 : name: 000b4c2c9cf06ff4af433703b1459bf1529311fcc7a24c6e407594ba071a7bc82060
 
-** Signing with RSA keys
+** Signing digests
+
+*** RSA
 
 Signing uses raw RSA keys and produces raw PKCS1.5 signatures for now.
 
@@ -674,6 +676,29 @@ echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key.yml | xxd
 000000e0: 842e 2aa6 7dd2 1842 7ef4 5208 3b47 d410  ..*.}..B~.R.;G..
 000000f0: 137f 9292 8d94 d5e3 64c0 2a2b e4e8 4342  ........d.*+..CB
 #+end_example
+
+*** EC: NIST-P256
+
+Signing uses raw elliptic curve keys and produces a concatenation of R
+and S values.
+
+Ultimately these raw objects can be wrapped with protocol-specific
+structures e.g. certificates (for raw RSA keys) or OpenPGP signatures
+(for raw signatures).
+
+Signing can use any key that has been defined previously:
+
+#+BEGIN_SRC sh :results output
+echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key-nist-p256.yml | xxd
+#+END_SRC
+
+#+RESULTS:
+: 00000000: 2b10 9aca a8ec 800c 4b50 b35a a62e 6f52  +.......KP.Z..oR
+: 00000010: 5bc3 a3c9 5c68 bd2a 4588 b7e8 94f6 2923  [...\h.*E.....)#
+: 00000020: f3e4 b073 82a1 42b4 1139 e5d0 d7a3 996d  ...s..B..9.....m
+: 00000030: 8893 a60a 6171 ddc1 ecb6 2992 8382 d8d2  ....aq....).....
+
+
 
 ** Decryption with RSA keys
 
