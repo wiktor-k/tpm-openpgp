@@ -400,8 +400,7 @@ dependencies = [
 [[package]]
 name = "tss-esapi"
 version = "6.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23bb26bea47d9a884f613730d2f68c9aeaef9a6a51ce8277d111042dbb8c5975"
+source = "git+https://github.com/wiktor-k/rust-tss-esapi?branch=add-ecdh-zgen#b47955bd8be2eeced6f2a825a9ff9d25cbc26add"
 dependencies = [
  "bitfield",
  "enumflags2",
@@ -419,8 +418,7 @@ dependencies = [
 [[package]]
 name = "tss-esapi-sys"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d02e46e893c805b2e5740ae2af4a4c85e6671aaf7166a5b5df97a5102391e0d"
+source = "git+https://github.com/wiktor-k/rust-tss-esapi?branch=add-ecdh-zgen#b47955bd8be2eeced6f2a825a9ff9d25cbc26add"
 dependencies = [
  "pkg-config",
  "target-lexicon",
