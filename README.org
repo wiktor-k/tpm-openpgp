@@ -721,7 +721,9 @@ echo -n foo | openssl dgst -binary -sha256 | sign-digest -f key-nist-p384.yml | 
 : 00000040: 00e2 057c 3b00 86fa 84e8 4152 3b9d 9e70  ...|;.....AR;..p
 : 00000050: 5a19 05a0 f13f 64f6 ddd7 5edd 764c 6cea  Z....?d...^.vLl.
 
-** Decryption with RSA keys
+** Decryption
+
+*** RSA
 
 Encryption and decryption works similarily to signing. The plaintext
 is being passed as standard input to =encrypt-raw= commmand and it
@@ -733,6 +735,54 @@ Both of these take the key defintion as a sole argument.
 #+BEGIN_SRC sh :results output
 echo this is a sample encryption message | encrypt-raw -f decryption.yml > encrypted
 decrypt-raw -f decryption.yml < encrypted
+#+END_SRC
+
+#+RESULTS:
+: this is a sample encryption message
+
+*** ECDH
+
+Encryption and decryption with EC keys works a little bit
+differently. EC key is used to generate two points: one is a public
+point that will be shared with the other party, the other is used as a
+symmetric key for encryption of the actual data.
+
+First, we need an EC key with =decrypt= capability. The key cannot be
+marked as =restrict= as that will prevent decryption.
+
+#+BEGIN_SRC yaml :tangle key-nist-p256-decryption.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000147
+  algo:
+    EC:
+      curve: NIST-P256
+  capabilities:
+    - decrypt
+  auth: 123
+#+END_SRC
+
+Then we generate two points: public point and the shared secret:
+
+#+BEGIN_SRC sh
+create-key -f key-nist-p256-decryption.yml
+
+# create a shared secret and public point
+ecdh-key-gen -f key-nist-p256-decryption.yml --public-point public.bin > shared-secret.bin
+
+# encrypt the message using shared secret
+echo this is a sample encryption message | openssl aes-256-cbc -e -kfile shared-secret.bin > encrypted
+
+# remove shared secret, move public point and encrypted message to the other party
+rm shared-secret.bin
+
+# recover shared secret using private key and the public point
+ecdh-recover -f key-nist-p256-decryption.yml --public-point public.bin > shared-secret.bin
+
+# decrypt the message
+openssl aes-256-cbc -d -kfile shared-secret.bin -in encrypted
 #+END_SRC
 
 #+RESULTS:
