@@ -51,11 +51,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     use std::io::Write;
     let mut public_point = File::create(opt.public_point)?;
-    public_point.write_all(&pub_point.point.x.buffer[..(pub_point.point.x.size as usize)])?;
-    public_point.write_all(&pub_point.point.y.buffer[..(pub_point.point.y.size as usize)])?;
+    public_point.write_all(pub_point.x().value())?;
+    public_point.write_all(pub_point.y().value())?;
 
     let mut stdout = std::io::stdout();
-    stdout.write_all(&z_point.point.x.buffer[..(z_point.point.x.size as usize)])?;
+    stdout.write_all(z_point.x().value())?;
 
     Ok(())
 }

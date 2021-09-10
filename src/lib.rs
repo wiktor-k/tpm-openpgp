@@ -1,22 +1,23 @@
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
-use tss_esapi::abstraction::cipher::Cipher;
 use tss_esapi::attributes::object::ObjectAttributesBuilder;
 use tss_esapi::constants::tss::*;
 use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
-use tss_esapi::interface_types::algorithm::HashingAlgorithm;
+use tss_esapi::interface_types::algorithm::{
+    EccSchemeAlgorithm, HashingAlgorithm, PublicAlgorithm, RsaSchemeAlgorithm,
+};
 use tss_esapi::interface_types::ecc::EccCurve;
+use tss_esapi::interface_types::key_bits::RsaKeyBits;
 use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::structures::SymmetricDefinitionObject;
-use tss_esapi::structures::{Auth, Private};
-use tss_esapi::tss2_esys::TPM2B_PUBLIC;
-use tss_esapi::utils::Tpm2BPublicBuilder;
-use tss_esapi::utils::{
-    AsymSchemeUnion, PublicIdUnion, PublicParmsUnion, TpmsEccParmsBuilder, TpmsRsaParmsBuilder,
+use tss_esapi::structures::{
+    Auth, EccParameter, EccScheme, Private, Public, PublicBuilder, PublicEccParametersBuilder,
+    PublicRsaParametersBuilder, RsaExponent, RsaScheme,
 };
+use tss_esapi::structures::{EccPoint, PublicKeyRsa};
+
 use tss_esapi::Context;
 use tss_esapi::Result;
-use tss_esapi_sys::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Description {
@@ -45,14 +46,14 @@ pub struct PrivateRsaKeyMaterial {
     pub modulus: RsaPublic,
 }
 
-impl From<&PrivateRsaKeyMaterial> for TPM2B_PRIVATE_KEY_RSA {
+impl From<&PrivateRsaKeyMaterial> for tss_esapi_sys::TPM2B_PRIVATE_KEY_RSA {
     fn from(private_rsa: &PrivateRsaKeyMaterial) -> Self {
         let key_prime = hex::decode(&private_rsa.prime).unwrap();
         let mut key_prime_buffer = [0u8; 256];
         key_prime_buffer[..key_prime.len()].clone_from_slice(&key_prime[..key_prime.len()]);
         let key_prime_len = key_prime.len().try_into().unwrap();
 
-        TPM2B_PRIVATE_KEY_RSA {
+        Self {
             size: key_prime_len,
             buffer: key_prime_buffer,
         }
@@ -65,12 +66,12 @@ pub struct EcParameter {
     pub points: EcPublic,
 }
 
-impl From<&EcParameter> for TPM2B_ECC_PARAMETER {
+impl From<&EcParameter> for tss_esapi_sys::TPM2B_ECC_PARAMETER {
     fn from(param: &EcParameter) -> Self {
         let parameter = hex::decode(&param.parameter).unwrap();
         let mut parameter_buffer = [0u8; 128];
         parameter_buffer[..parameter.len()].clone_from_slice(&parameter);
-        TPM2B_ECC_PARAMETER {
+        Self {
             size: parameter.len() as u16,
             buffer: parameter_buffer,
         }
@@ -144,18 +145,10 @@ pub struct RsaPublic {
     pub bytes: String,
 }
 
-impl From<&RsaPublic> for PublicIdUnion {
+impl From<&RsaPublic> for PublicKeyRsa {
     fn from(public: &RsaPublic) -> Self {
         let public_modulus = hex::decode(&public.bytes).unwrap();
-        let mut public_modulus_buffer = [0_u8; 512];
-        public_modulus_buffer[..public_modulus.len()]
-            .clone_from_slice(&public_modulus[..public_modulus.len()]);
-
-        let pub_buffer = TPM2B_PUBLIC_KEY_RSA {
-            size: public_modulus.len() as u16,
-            buffer: public_modulus_buffer,
-        };
-        PublicIdUnion::Rsa(Box::from(pub_buffer))
+        PublicKeyRsa::try_from(public_modulus).unwrap()
     }
 }
 
@@ -165,39 +158,19 @@ pub struct EcPublic {
     pub y: String,
 }
 
-impl From<&EcPublic> for PublicIdUnion {
+impl From<&EcPublic> for EccPoint {
     fn from(public: &EcPublic) -> Self {
         let x = hex::decode(&public.x).unwrap();
         let y = hex::decode(&public.y).unwrap();
-        let mut x_buffer = [0_u8; 128];
-        x_buffer[0..x.len()].clone_from_slice(&x[..x.len()]);
-        let mut y_buffer = [0_u8; 128];
-        y_buffer[0..y.len()].clone_from_slice(&y[..y.len()]);
 
-        let pub_buffer = TPMS_ECC_POINT {
-            x: TPM2B_ECC_PARAMETER {
-                size: x.len() as u16,
-                buffer: x_buffer,
-            },
-            y: TPM2B_ECC_PARAMETER {
-                size: y.len() as u16,
-                buffer: y_buffer,
-            },
-        };
-        PublicIdUnion::Ecc(Box::from(pub_buffer))
+        EccPoint::new(
+            EccParameter::try_from(x).unwrap(),
+            EccParameter::try_from(y).unwrap(),
+        )
     }
 }
 
-impl From<&PublicKeyBytes> for PublicIdUnion {
-    fn from(bytes: &PublicKeyBytes) -> Self {
-        match bytes {
-            PublicKeyBytes::RSA(public) => public.into(),
-            PublicKeyBytes::EC(public) => public.into(),
-        }
-    }
-}
-
-pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSITIVE>)> {
+pub fn create(spec: &Specification) -> Result<(Public, Option<tss_esapi_sys::TPM2B_SENSITIVE>)> {
     let attributes = ObjectAttributesBuilder::new()
         .with_fixed_tpm(spec.private.is_none())
         .with_fixed_parent(spec.private.is_none())
@@ -208,66 +181,72 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
         .with_restricted(spec.capabilities.contains(&Capability::Restrict))
         .build()?;
 
-    let mut builder = Tpm2BPublicBuilder::new()
-        .with_name_alg(TPM2_ALG_SHA256)
+    let mut builder = PublicBuilder::new()
+        .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
         .with_object_attributes(attributes);
 
     if let Some(unique) = &spec.provider.tpm.unique {
-        builder = builder.with_unique(unique.into());
+        builder = match unique {
+            PublicKeyBytes::RSA(ref bytes) => builder.with_rsa_unique_identifier(&bytes.into()),
+            PublicKeyBytes::EC(ref bytes) => builder.with_ecc_unique_identifier(&bytes.into()),
+        }
     }
 
     builder = match &spec.algo {
         AlgorithmSpec::Rsa { bits, exponent } => {
-            let rsa_params_builder = TpmsRsaParmsBuilder {
-                symmetric: if spec.capabilities.contains(&Capability::Restrict) {
-                    Some(SymmetricDefinitionObject::try_from(Cipher::aes_256_cfb())?.into())
-                } else {
-                    None
-                },
-                scheme: if spec.capabilities.contains(&Capability::Decrypt) {
-                    Some(AsymSchemeUnion::AnySig(None))
+            let mut rsa_params_builder = PublicRsaParametersBuilder::new();
+            if spec.capabilities.contains(&Capability::Restrict) {
+                rsa_params_builder =
+                    rsa_params_builder.with_symmetric(SymmetricDefinitionObject::AES_128_CFB);
+            }
+            rsa_params_builder = rsa_params_builder
+                .with_scheme(if spec.capabilities.contains(&Capability::Decrypt) {
+                    //Some(AsymSchemeUnion::AnySig(None))
+                    RsaScheme::Null
                 } else if spec.capabilities.contains(&Capability::Sign) {
-                    Some(AsymSchemeUnion::RSASSA(HashingAlgorithm::Sha256))
+                    //Some(AsymSchemeUnion::RSASSA(HashingAlgorithm::Sha256))
+                    RsaScheme::create(RsaSchemeAlgorithm::RsaSsa, Some(HashingAlgorithm::Sha256))
+                        .unwrap()
                 } else {
                     panic!("Key needs to be for decryption or for signing")
-                },
-                key_bits: *bits,
-                exponent: exponent.unwrap_or(0),
-                for_signing: spec.capabilities.contains(&Capability::Sign),
-                for_decryption: spec.capabilities.contains(&Capability::Decrypt),
-                restricted: spec.capabilities.contains(&Capability::Restrict),
-            };
+                })
+                .with_key_bits(RsaKeyBits::try_from(*bits).unwrap())
+                .with_exponent(RsaExponent::try_from(exponent.unwrap_or(0)).unwrap())
+                .with_is_signing_key(spec.capabilities.contains(&Capability::Sign))
+                .with_is_decryption_key(spec.capabilities.contains(&Capability::Decrypt))
+                .with_restricted(spec.capabilities.contains(&Capability::Restrict));
 
             let rsa_params = rsa_params_builder.build()?;
 
             builder = builder
-                .with_type(TPM2_ALG_RSA)
-                .with_parms(PublicParmsUnion::RsaDetail(rsa_params));
+                .with_public_algorithm(PublicAlgorithm::Rsa)
+                .with_rsa_parameters(rsa_params);
 
             builder
         }
         AlgorithmSpec::Ec { ref curve } => {
-            let ecc_builder = TpmsEccParmsBuilder {
-                symmetric: if spec.capabilities.contains(&Capability::Restrict) {
-                    Some(Cipher::aes_256_cfb())
+            let ecc_builder = PublicEccParametersBuilder::new()
+                .with_symmetric(if spec.capabilities.contains(&Capability::Restrict) {
+                    SymmetricDefinitionObject::AES_128_CFB
                 } else {
-                    None
-                },
-                scheme: if spec.capabilities.contains(&Capability::Decrypt) {
-                    AsymSchemeUnion::AnySig(None)
+                    SymmetricDefinitionObject::Null
+                })
+                .with_ecc_scheme(if spec.capabilities.contains(&Capability::Decrypt) {
+                    //AsymSchemeUnion::AnySig(None)
+                    EccScheme::Null
                 } else if spec.capabilities.contains(&Capability::Sign) {
-                    AsymSchemeUnion::ECDSA(HashingAlgorithm::Sha256)
+                    //AsymSchemeUnion::ECDSA(HashingAlgorithm::Sha256)
+                    EccScheme::create(EccSchemeAlgorithm::EcDsa, None, None).unwrap()
                 } else {
                     panic!("Key needs to be for decryption or for signing")
-                },
-                curve: curve.into(),
-                for_signing: spec.capabilities.contains(&Capability::Sign),
-                for_decryption: spec.capabilities.contains(&Capability::Decrypt),
-                restricted: spec.capabilities.contains(&Capability::Restrict),
-            };
+                })
+                .with_curve(curve.into())
+                .with_is_signing_key(spec.capabilities.contains(&Capability::Sign))
+                .with_is_decryption_key(spec.capabilities.contains(&Capability::Decrypt))
+                .with_restricted(spec.capabilities.contains(&Capability::Restrict));
             builder = builder
-                .with_type(TPM2_ALG_ECC)
-                .with_parms(PublicParmsUnion::EccDetail(ecc_builder.build()?));
+                .with_public_algorithm(PublicAlgorithm::Ecc)
+                .with_ecc_parameters(ecc_builder.build()?);
 
             builder
         }
@@ -275,44 +254,36 @@ pub fn create(spec: &Specification) -> Result<(TPM2B_PUBLIC, Option<TPM2B_SENSIT
 
     let private = match spec.private {
         Some(PrivateKeyMaterial::Rsa(ref private_rsa)) => {
-            let rsa: TPM2B_PRIVATE_KEY_RSA = private_rsa.into();
+            let rsa: tss_esapi_sys::TPM2B_PRIVATE_KEY_RSA = private_rsa.into();
 
-            Some((
-                TPM2B_SENSITIVE {
-                    size: rsa.size,
-                    sensitiveArea: TPMT_SENSITIVE {
-                        sensitiveType: TPM2_ALG_RSA,
-                        authValue: Default::default(),
-                        seedValue: Default::default(),
-                        sensitive: TPMU_SENSITIVE_COMPOSITE { rsa },
-                    },
+            builder = builder.with_rsa_unique_identifier(&(&private_rsa.modulus).into());
+            Some(tss_esapi_sys::TPM2B_SENSITIVE {
+                size: rsa.size,
+                sensitiveArea: tss_esapi_sys::TPMT_SENSITIVE {
+                    sensitiveType: TPM2_ALG_RSA,
+                    authValue: Default::default(),
+                    seedValue: Default::default(),
+                    sensitive: tss_esapi_sys::TPMU_SENSITIVE_COMPOSITE { rsa },
                 },
-                (&(private_rsa.modulus)).into(),
-            ))
+            })
         }
         Some(PrivateKeyMaterial::Ec(ref param)) => {
-            let ecc: TPM2B_ECC_PARAMETER = param.into();
-            Some((
-                TPM2B_SENSITIVE {
-                    size: ecc.size,
-                    sensitiveArea: TPMT_SENSITIVE {
-                        sensitiveType: TPM2_ALG_ECC,
-                        authValue: Default::default(),
-                        seedValue: Default::default(),
-                        sensitive: TPMU_SENSITIVE_COMPOSITE { ecc },
-                    },
+            let ecc: tss_esapi_sys::TPM2B_ECC_PARAMETER = param.into();
+            builder = builder.with_ecc_unique_identifier(&(&(param.points)).into());
+            Some(tss_esapi_sys::TPM2B_SENSITIVE {
+                size: ecc.size,
+                sensitiveArea: tss_esapi_sys::TPMT_SENSITIVE {
+                    sensitiveType: TPM2_ALG_ECC,
+                    authValue: Default::default(),
+                    seedValue: Default::default(),
+                    sensitive: tss_esapi_sys::TPMU_SENSITIVE_COMPOSITE { ecc },
                 },
-                (&(param.points)).into(),
-            ))
+            })
         }
         _ => None,
     };
 
-    if let Some((sensitive, public)) = private {
-        Ok((builder.with_unique(public).build()?, Some(sensitive)))
-    } else {
-        Ok((builder.build()?, None))
-    }
+    Ok((builder.build()?, private))
 }
 
 pub fn convert_to_key_handle(
@@ -351,7 +322,7 @@ pub fn convert_to_key_handle(
         context.load(
             key_handle,
             Private::try_from(hex::decode(private).unwrap())?,
-            create(specification)?.0,
+            &create(specification)?.0,
         )?
     } else {
         panic!("Cannot load key");

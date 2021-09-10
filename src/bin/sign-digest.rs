@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fs::File;
@@ -9,11 +10,10 @@ use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 
-use tss_esapi::structures::{Digest, SymmetricDefinition};
+use tss_esapi::structures::{Digest, Signature, SymmetricDefinition};
 use tss_esapi::{Context, Tcti};
 
 use tss_esapi::tss2_esys::{TPMT_SIG_SCHEME, TPMT_TK_HASHCHECK};
-use tss_esapi::utils::SignatureData;
 
 use tss_esapi::constants::tss::{TPM2_ALG_NULL, TPM2_RH_NULL, TPM2_ST_HASHCHECK};
 
@@ -73,14 +73,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let signature = context.sign(key_handle, digest, scheme, validation)?;
 
-    let signature = match signature.signature {
-        SignatureData::RsaSignature(signature) => signature,
-        SignatureData::EcdsaSignature { ref r, ref s } => {
+    let signature = match signature {
+        Signature::RsaSsa(ref signature) => Cow::Borrowed(signature.signature().value()),
+        Signature::EcDsa(signature) => {
             let mut sig = vec![];
-            sig.extend(r);
-            sig.extend(s);
-            sig
+            sig.extend(signature.signature_r().value());
+            sig.extend(signature.signature_s().value());
+            Cow::Owned(sig)
         }
+        _ => panic!("Unsupported signature scheme."),
     };
 
     let mut stdout = std::io::stdout();

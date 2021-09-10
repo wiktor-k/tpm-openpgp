@@ -8,10 +8,8 @@ use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 
-use tss_esapi::structures::{Data, PublicKeyRSA, SymmetricDefinition};
+use tss_esapi::structures::{Data, PublicKeyRsa, RsaDecryptionScheme, SymmetricDefinition};
 use tss_esapi::{Context, Tcti};
-
-use tss_esapi::utils::AsymSchemeUnion;
 
 use structopt::StructOpt;
 
@@ -54,12 +52,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut handle = stdin.lock();
     handle.read_to_end(&mut bytes)?;
 
-    let cipher_text = PublicKeyRSA::try_from(bytes)?;
+    let cipher_text = PublicKeyRsa::try_from(bytes)?;
 
     let plain_text = context.rsa_decrypt(
         key_handle,
         cipher_text,
-        AsymSchemeUnion::RSAES,
+        RsaDecryptionScheme::Null,
         Data::default(),
     )?;
 

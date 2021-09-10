@@ -5,12 +5,11 @@ use tpm_openpgp::Description;
 use tpm_openpgp::{EcPublic, PublicKeyBytes, RsaPublic};
 use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
-use tss_esapi::constants::tss::{TPM2_ALG_ECC, TPM2_ALG_RSA};
 use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 use tss_esapi::interface_types::dynamic_handles::Persistent;
 use tss_esapi::interface_types::resource_handles::{Hierarchy, Provision};
-use tss_esapi::structures::{Auth, SymmetricDefinition};
+use tss_esapi::structures::{Auth, Public, SymmetricDefinition};
 
 use tss_esapi::{Context, Tcti};
 
@@ -86,24 +85,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
 
         deserialized.spec.provider.tpm.private = Some(hex::encode(pk.out_private.value()));
-        deserialized.spec.provider.tpm.unique = match pk.out_public.publicArea.type_ {
-            t if t == TPM2_ALG_RSA => Some(PublicKeyBytes::RSA(RsaPublic {
-                bytes: hex::encode(unsafe {
-                    &pk.out_public.publicArea.unique.rsa.buffer
-                        [..pk.out_public.publicArea.unique.rsa.size as usize]
-                }),
+        deserialized.spec.provider.tpm.unique = match pk.out_public {
+            Public::Rsa { unique, .. } => Some(PublicKeyBytes::RSA(RsaPublic {
+                bytes: hex::encode(unique.value()),
             })),
-            t if t == TPM2_ALG_ECC => Some(PublicKeyBytes::EC(EcPublic {
-                x: hex::encode(unsafe {
-                    &pk.out_public.publicArea.unique.ecc.x.buffer
-                        [..pk.out_public.publicArea.unique.ecc.x.size as usize]
-                }),
-                y: hex::encode(unsafe {
-                    &pk.out_public.publicArea.unique.ecc.y.buffer
-                        [..pk.out_public.publicArea.unique.ecc.y.size as usize]
-                }),
+            Public::Ecc { unique, .. } => Some(PublicKeyBytes::EC(EcPublic {
+                x: hex::encode(unique.x().value()),
+                y: hex::encode(unique.y().value()),
             })),
-            t => panic!("Unsupported public area type: {}", t),
+            _ => panic!("Unsupported public area type"),
         };
         println!("{}", serde_yaml::to_string(&deserialized)?);
     }
