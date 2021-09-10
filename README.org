@@ -771,13 +771,25 @@ create-key -f key-nist-p256-decryption.yml
 
 # create a shared secret and public point
 ecdh-key-gen -f key-nist-p256-decryption.yml --public-point public.bin > shared-secret.bin
+#+END_SRC
 
+And we use the shared secret to encrypt the message. Shared secret is
+removed as it is no longer necessary. The public point, along with the
+encrypted message, is transferred.
+
+#+BEGIN_SRC sh
 # encrypt the message using shared secret
 echo this is a sample encryption message | openssl aes-256-cbc -e -kfile shared-secret.bin > encrypted
 
 # remove shared secret, move public point and encrypted message to the other party
 rm shared-secret.bin
+#+END_SRC
 
+The decrypting party first recovers the shared secret using the public
+point. Then the shared secret is passed to symmetric algorithm as a
+key (here using OpenSSL):
+
+#+BEGIN_SRC sh
 # recover shared secret using private key and the public point
 ecdh-recover -f key-nist-p256-decryption.yml --public-point public.bin > shared-secret.bin
 
