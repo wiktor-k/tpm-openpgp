@@ -1,4 +1,4 @@
-image: "rust:latest"
+image: "rust@sha256:86bb2e39e20f602b169ade0bc5cff7460a49af2f60b9aefc390db48eb888d20a"
 
 build:
   image: docker:stable
