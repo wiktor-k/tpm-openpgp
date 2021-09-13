@@ -6,9 +6,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tss-esapi = "6.1.0"
+tss-esapi = { version = "6.1.0", git = "https://github.com/wiktor-k/rust-tss-esapi", branch = "add-ecdh-zgen" }
 structopt = "0.3.22"
 serde_yaml = "0.8.13"
 serde = "1"
 hex = "0.4.3"
-tss-esapi-sys = "0.2.0"
+tss-esapi-sys = { version = "0.2.0", git = "https://github.com/wiktor-k/rust-tss-esapi", branch = "add-ecdh-zgen" }
