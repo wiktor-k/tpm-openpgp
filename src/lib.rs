@@ -11,8 +11,8 @@ use tss_esapi::interface_types::key_bits::RsaKeyBits;
 use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::structures::SymmetricDefinitionObject;
 use tss_esapi::structures::{
-    Auth, EccParameter, EccScheme, Private, Public, PublicBuilder, PublicEccParametersBuilder,
-    PublicRsaParametersBuilder, RsaExponent, RsaScheme,
+    Auth, EccParameter, EccScheme, KeyDerivationFunctionScheme, Private, Public, PublicBuilder,
+    PublicEccParametersBuilder, PublicRsaParametersBuilder, RsaExponent, RsaScheme,
 };
 use tss_esapi::structures::{EccPoint, PublicKeyRsa};
 
@@ -190,6 +190,10 @@ pub fn create(spec: &Specification) -> Result<(Public, Option<tss_esapi_sys::TPM
             PublicKeyBytes::RSA(ref bytes) => builder.with_rsa_unique_identifier(&bytes.into()),
             PublicKeyBytes::EC(ref bytes) => builder.with_ecc_unique_identifier(&bytes.into()),
         }
+    } else {
+        builder = builder
+            .with_rsa_unique_identifier(&Default::default())
+            .with_ecc_unique_identifier(&Default::default());
     }
 
     builder = match &spec.algo {
@@ -201,10 +205,8 @@ pub fn create(spec: &Specification) -> Result<(Public, Option<tss_esapi_sys::TPM
             }
             rsa_params_builder = rsa_params_builder
                 .with_scheme(if spec.capabilities.contains(&Capability::Decrypt) {
-                    //Some(AsymSchemeUnion::AnySig(None))
                     RsaScheme::Null
                 } else if spec.capabilities.contains(&Capability::Sign) {
-                    //Some(AsymSchemeUnion::RSASSA(HashingAlgorithm::Sha256))
                     RsaScheme::create(RsaSchemeAlgorithm::RsaSsa, Some(HashingAlgorithm::Sha256))
                         .unwrap()
                 } else {
@@ -218,32 +220,33 @@ pub fn create(spec: &Specification) -> Result<(Public, Option<tss_esapi_sys::TPM
 
             let rsa_params = rsa_params_builder.build()?;
 
-            builder = builder
-                .with_public_algorithm(PublicAlgorithm::Rsa)
-                .with_rsa_parameters(rsa_params);
-
             builder
+                .with_public_algorithm(PublicAlgorithm::Rsa)
+                .with_rsa_parameters(rsa_params)
         }
         AlgorithmSpec::Ec { ref curve } => {
-            let ecc_builder = PublicEccParametersBuilder::new()
-                .with_symmetric(if spec.capabilities.contains(&Capability::Restrict) {
-                    SymmetricDefinitionObject::AES_128_CFB
-                } else {
-                    SymmetricDefinitionObject::Null
-                })
+            let mut ecc_builder = PublicEccParametersBuilder::new()
                 .with_ecc_scheme(if spec.capabilities.contains(&Capability::Decrypt) {
-                    //AsymSchemeUnion::AnySig(None)
                     EccScheme::Null
                 } else if spec.capabilities.contains(&Capability::Sign) {
-                    //AsymSchemeUnion::ECDSA(HashingAlgorithm::Sha256)
-                    EccScheme::create(EccSchemeAlgorithm::EcDsa, None, None).unwrap()
+                    EccScheme::create(
+                        EccSchemeAlgorithm::EcDsa,
+                        Some(HashingAlgorithm::Sha256),
+                        None,
+                    )
+                    .unwrap()
                 } else {
                     panic!("Key needs to be for decryption or for signing")
                 })
                 .with_curve(curve.into())
                 .with_is_signing_key(spec.capabilities.contains(&Capability::Sign))
                 .with_is_decryption_key(spec.capabilities.contains(&Capability::Decrypt))
-                .with_restricted(spec.capabilities.contains(&Capability::Restrict));
+                .with_restricted(spec.capabilities.contains(&Capability::Restrict))
+                .with_key_derivation_function_scheme(KeyDerivationFunctionScheme::Null);
+            if spec.capabilities.contains(&Capability::Restrict) {
+                ecc_builder = ecc_builder.with_symmetric(SymmetricDefinitionObject::AES_128_CFB);
+            }
+
             builder = builder
                 .with_public_algorithm(PublicAlgorithm::Ecc)
                 .with_ecc_parameters(ecc_builder.build()?);
