@@ -18,6 +18,8 @@ struct Opt {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
     let opt = Opt::from_args();
 
     let deserialized: Description = serde_yaml::from_reader(File::open(opt.file)?)?;

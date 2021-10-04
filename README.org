@@ -22,6 +22,9 @@ tpm2_startup -c -T mssim
 
 TCTI=mssim:
 PATH=$PATH:./target/debug
+
+# Increase verbosity of commands
+export RUST_LOG=info
 #+end_src
 
 To generate a number of random bytes using the specified TPM:
