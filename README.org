@@ -919,9 +919,9 @@ https://nlnet.nl/project/Sequoia-TPM/ for details.
   - [X] Signing using EC keys in the TPM
   - [X] Decryption using EC keys in the TPM
 
-** Key migration support [1/4]
+** Key migration support [2/4]
   - [X] Export of TPM encryption key
-  - [ ] Wrapping user's private key using TPM encryption key
+  - [X] Wrapping user's private key using TPM encryption key
   - [ ] Import of the wrapper private key to the TPM chip
   - [ ] PR to the upstream rust-tss-esapi crate
 
