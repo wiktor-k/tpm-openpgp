@@ -128,13 +128,6 @@ pub struct TpmProvider {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Status {
-    pub public_key: PublicKeyBytes,
-    pub manu: Option<u32>,
-    pub name: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub enum PublicKeyBytes {
     RSA(RsaPublic),
     EC(EcPublic),
