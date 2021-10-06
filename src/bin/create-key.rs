@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(handle) = deserialized.spec.provider.tpm.handle {
         let pk = context.create_primary(
             Hierarchy::Owner,
-            &tpm_openpgp::create(&deserialized.spec)?.0,
+            &tpm_openpgp::create(&deserialized.spec)?.0.build()?,
             Some(&key_auth),
             None,
             None,
@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         let pk = context.create(
             key_handle,
-            &tpm_openpgp::create(&deserialized.spec)?.0,
+            &tpm_openpgp::create(&deserialized.spec)?.0.build()?,
             Some(&key_auth),
             None,
             None,

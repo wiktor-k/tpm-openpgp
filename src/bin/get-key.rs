@@ -3,7 +3,6 @@ use std::str::FromStr;
 use tpm_openpgp::{Description, EcPublic, RsaPublic};
 use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
-use tss_esapi::constants::PropertyTag;
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 
 use tss_esapi::structures::{Public, SymmetricDefinition};
@@ -22,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let opt = Opt::from_args();
 
-    let deserialized: Description = serde_yaml::from_reader(File::open(opt.file)?)?;
+    let mut deserialized: Description = serde_yaml::from_reader(File::open(opt.file)?)?;
 
     let tcti = Tcti::from_str(&deserialized.spec.provider.tpm.tcti)?;
 
@@ -47,9 +46,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let key_handle = tpm_openpgp::convert_to_key_handle(&mut context, &deserialized.spec)?;
 
-    let manu = context.get_tpm_property(PropertyTag::Manufacturer)?;
-    let name = hex::encode(context.tr_get_name(key_handle.into())?.value());
-
     let (public, _, _) = context.read_public(key_handle)?;
 
     let public_key = match public {
@@ -64,12 +60,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => panic!("Unsupported key type."),
     };
 
-    let value = tpm_openpgp::Status {
-        public_key,
-        manu,
-        name,
-    };
-    println!("{}", serde_yaml::to_string(&value)?);
+    deserialized.spec.provider.tpm.unique = Some(public_key);
+
+    println!("{}", serde_yaml::to_string(&deserialized)?);
 
     Ok(())
 }

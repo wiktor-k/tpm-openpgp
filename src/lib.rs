@@ -11,7 +11,7 @@ use tss_esapi::interface_types::key_bits::RsaKeyBits;
 use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::structures::SymmetricDefinitionObject;
 use tss_esapi::structures::{
-    Auth, EccParameter, EccScheme, KeyDerivationFunctionScheme, Private, Public, PublicBuilder,
+    Auth, EccParameter, EccScheme, KeyDerivationFunctionScheme, Private, PublicBuilder,
     PublicEccParametersBuilder, PublicRsaParametersBuilder, RsaExponent, RsaScheme,
 };
 use tss_esapi::structures::{EccPoint, PublicKeyRsa};
@@ -125,13 +125,7 @@ pub struct TpmProvider {
     pub parent: Option<u32>,
     pub private: Option<String>,
     pub unique: Option<PublicKeyBytes>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Status {
-    pub public_key: PublicKeyBytes,
-    pub manu: Option<u32>,
-    pub name: String,
+    pub secret: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -170,7 +164,9 @@ impl From<&EcPublic> for EccPoint {
     }
 }
 
-pub fn create(spec: &Specification) -> Result<(Public, Option<tss_esapi_sys::TPM2B_SENSITIVE>)> {
+pub fn create(
+    spec: &Specification,
+) -> Result<(PublicBuilder, Option<tss_esapi_sys::TPM2B_SENSITIVE>)> {
     let attributes = ObjectAttributesBuilder::new()
         .with_fixed_tpm(spec.private.is_none())
         .with_fixed_parent(spec.private.is_none())
@@ -286,15 +282,15 @@ pub fn create(spec: &Specification) -> Result<(Public, Option<tss_esapi_sys::TPM
         _ => None,
     };
 
-    Ok((builder.build()?, private))
+    Ok((builder, private))
 }
 
 pub fn convert_to_key_handle(
     context: &mut Context,
     specification: &Specification,
 ) -> Result<KeyHandle> {
-    let key_handle = if let (public, Some(private)) = &create(specification)? {
-        context.load_external(private, public, Hierarchy::Null)?
+    let key_handle = if let (public, Some(private)) = create(specification)? {
+        context.load_external(&private, &public.build()?, Hierarchy::Null)?
     } else if let Some(handle) = specification.provider.tpm.handle {
         let persistent_tpm_handle = PersistentTpmHandle::new(handle)?;
 
@@ -325,7 +321,7 @@ pub fn convert_to_key_handle(
         context.load(
             key_handle,
             Private::try_from(hex::decode(private).unwrap())?,
-            &create(specification)?.0,
+            &create(specification)?.0.build()?,
         )?
     } else {
         panic!("Cannot load key");

@@ -6,10 +6,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tss-esapi = "7.0.0-alpha.1"
+tss-esapi = { version = "7.0.0-alpha.1", git = "https://github.com/parallaxsecond/rust-tss-esapi" }
+tss-esapi-sys = { version = "0.2.0", git = "https://github.com/parallaxsecond/rust-tss-esapi" }
 structopt = "0.3.22"
 serde_yaml = "0.8.13"
 serde = "1"
 hex = "0.4.3"
-tss-esapi-sys = "0.2.0"
 env_logger = "0.9.0"
