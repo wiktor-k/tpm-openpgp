@@ -5,7 +5,7 @@
 This crate implements bindings so that TPM chips can be used with
 OpenPGP applications.
 
-* Usage
+* Basic key usage
 
 First, we assume that we'll use TPM 2 simulator package. If you want
 to test on real device set ~TCTI~ to ~device:/dev/tpmrm0~.
@@ -22,6 +22,9 @@ tpm2_startup -c -T mssim
 
 TCTI=mssim:
 PATH=$PATH:./target/debug
+
+# Increase verbosity of commands
+export RUST_LOG=info
 #+end_src
 
 To generate a number of random bytes using the specified TPM:
@@ -800,6 +803,58 @@ openssl aes-256-cbc -d -kfile shared-secret.bin -in encrypted
 #+RESULTS:
 : this is a sample encryption message
 
+This concludes our basic TPM usage section. TPM will be cleared discarding all keys:
+
+#+BEGIN_SRC sh
+tpm2_clear
+#+END_SRC
+
+* Key duplication
+
+Key duplication allows secure private key material transfer from one
+machine (e.g. offline computer) to the other (e.g. online computer).
+
+The main benefit is that the online computer never sees private key
+bits in plain. They are encrypted to the storage key that is stored in
+the TPM chip. The encrypted private key is decrypted by the TPM during
+import.
+
+On online laptop, export the TPM key that will serve as parent for the
+imported key. This parent key needs to have =decrypt= and =restrict=
+capabilities.
+
+#+BEGIN_SRC yaml :tangle duplication-parent.yml
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: 0x81000027
+  algo:
+    RSA:
+      bits: 2048
+  capabilities:
+    - decrypt
+    - restrict
+  auth: 123
+#+END_SRC
+
+#+BEGIN_SRC sh
+create-key -f duplication-parent.yml
+#+END_SRC
+
+Retrieve the key's public key bits and transfer them to the offline computer:
+
+#+BEGIN_SRC sh
+get-key -f duplication-parent.yml
+#+END_SRC
+
+#+RESULTS:
+: public_key:
+:   RSA:
+:     bytes: cae8d5cc5d495d043c8d29d891c40248e2040db3d98c006a708fa5972b55050c5186db91ef8ad3b83c3711138f13318f8551d6ceababaf819bdfc7a7c53eb0122de46162c687e224baaca5ac1a66bcd169fff817971bd85021ae2cd71dd3ecf5e358ad8ac952f80116284ce15ae8ee120211b591717eae507a71d32a37db140e26925370cabe52f71b4a577f8afc91c7db71d21170de234eed7c72b061c462d1ddd75bbcaaa2594f9eba26d974653299bba917ab75098f6964636dce709c865d5e4e01441d11a32b2d333d6429dddb27916681048a84961c401bfaf92b1df2c45be68aa7b9b2f26bb4a4d2bbd7fdaf2ad7ff50c49b056e192754cae0f29bca4f
+: manu: 1229081888
+: name: 000b4d9d1dd3ac215aa451032d478ad8cd74216ff0c5e3fd135687b6edd457ce35d8
+
 * Work plan
 
 Work on this project is being sponsored by NLnet. See
@@ -819,8 +874,8 @@ https://nlnet.nl/project/Sequoia-TPM/ for details.
   - [X] Signing using EC keys in the TPM
   - [X] Decryption using EC keys in the TPM
 
-** Key migration support [/]
-  - [ ] Export of TPM encryption key
+** Key migration support [1/4]
+  - [X] Export of TPM encryption key
   - [ ] Wrapping user's private key using TPM encryption key
   - [ ] Import of the wrapper private key to the TPM chip
   - [ ] PR to the upstream rust-tss-esapi crate

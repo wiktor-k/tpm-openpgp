@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::fs::File;
 use std::str::FromStr;
 use tpm_openpgp::{Description, EcPublic, RsaPublic};
@@ -7,8 +6,7 @@ use tss_esapi::constants::session_type::SessionType;
 use tss_esapi::constants::PropertyTag;
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 
-use tss_esapi::structures::SymmetricDefinition;
-use tss_esapi::utils::PublicIdUnion;
+use tss_esapi::structures::{Public, SymmetricDefinition};
 use tss_esapi::{Context, Tcti};
 
 use structopt::StructOpt;
@@ -20,6 +18,8 @@ struct Opt {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
     let opt = Opt::from_args();
 
     let deserialized: Description = serde_yaml::from_reader(File::open(opt.file)?)?;
@@ -52,26 +52,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (public, _, _) = context.read_public(key_handle)?;
 
-    let public_key = match unsafe { PublicIdUnion::from_public(&public)? } {
+    let public_key = match public {
         // call should be safe given our trust in the TSS library
-        PublicIdUnion::Rsa(pub_key) => {
-            let mut key = pub_key.buffer.to_vec();
-            key.truncate(pub_key.size.try_into().unwrap()); // should not fail on supported targets
-                                                            //eprintln!("key = {:#?}", key);
-            tpm_openpgp::PublicKeyBytes::RSA(RsaPublic {
-                bytes: hex::encode(key),
-            })
-        }
-        PublicIdUnion::Ecc(pub_key) => {
-            let mut x = pub_key.x.buffer.to_vec();
-            x.truncate(pub_key.x.size.try_into().unwrap()); // should not fail on supported targets
-            let mut y = pub_key.y.buffer.to_vec();
-            y.truncate(pub_key.y.size.try_into().unwrap()); // should not fail on supported targets
-            tpm_openpgp::PublicKeyBytes::EC(EcPublic {
-                x: hex::encode(x),
-                y: hex::encode(y),
-            })
-        }
+        Public::Rsa { unique, .. } => tpm_openpgp::PublicKeyBytes::RSA(RsaPublic {
+            bytes: hex::encode(unique.value()),
+        }),
+        Public::Ecc { unique, .. } => tpm_openpgp::PublicKeyBytes::EC(EcPublic {
+            x: hex::encode(unique.x().value()),
+            y: hex::encode(unique.y().value()),
+        }),
         _ => panic!("Unsupported key type."),
     };
 

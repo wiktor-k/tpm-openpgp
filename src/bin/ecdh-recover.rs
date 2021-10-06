@@ -1,12 +1,12 @@
+use std::convert::TryFrom;
 use std::fs::File;
 use std::str::FromStr;
 use tpm_openpgp::Description;
 use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
-use tss_esapi_sys::*;
 
-use tss_esapi::structures::SymmetricDefinition;
+use tss_esapi::structures::{EccParameter, EccPoint, SymmetricDefinition};
 use tss_esapi::{Context, Tcti};
 
 use structopt::StructOpt;
@@ -54,35 +54,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         data
     };
 
-    let mut x = [0u8; 128];
-    let mut y = [0u8; 128];
     let size = data.len() / 2;
-
-    x[..size].copy_from_slice(&data[..size]);
-    y[..size].copy_from_slice(&data[size..]);
-
-    let public_point = TPM2B_ECC_POINT {
-        size: (size * 2) as u16,
-        point: TPMS_ECC_POINT {
-            x: TPM2B_ECC_PARAMETER {
-                size: size as u16,
-                buffer: x,
-            },
-            y: TPM2B_ECC_PARAMETER {
-                size: size as u16,
-                buffer: y,
-            },
-        },
-    };
 
     let key_handle = tpm_openpgp::convert_to_key_handle(&mut context, &deserialized.spec)?;
 
-    let z_point = context.ecdh_z_gen(key_handle, public_point)?;
+    let z_point = context.ecdh_z_gen(
+        key_handle,
+        EccPoint::new(
+            EccParameter::try_from(&data[..size])?,
+            EccParameter::try_from(&data[size..])?,
+        ),
+    )?;
 
     use std::io::Write;
 
     let mut stdout = std::io::stdout();
-    stdout.write_all(&z_point.point.x.buffer[..(z_point.point.x.size as usize)])?;
+    stdout.write_all(z_point.x().value())?;
 
     Ok(())
 }
