@@ -125,6 +125,7 @@ pub struct TpmProvider {
     pub parent: Option<u32>,
     pub private: Option<String>,
     pub unique: Option<PublicKeyBytes>,
+    pub secret: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
