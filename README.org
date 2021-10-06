@@ -845,15 +845,60 @@ create-key -f duplication-parent.yml
 Retrieve the key's public key bits and transfer them to the offline computer:
 
 #+BEGIN_SRC sh
-get-key -f duplication-parent.yml
+get-key -f duplication-parent.yml | tee duplication-parent-full.yml
 #+END_SRC
 
 #+RESULTS:
-: public_key:
-:   RSA:
-:     bytes: cae8d5cc5d495d043c8d29d891c40248e2040db3d98c006a708fa5972b55050c5186db91ef8ad3b83c3711138f13318f8551d6ceababaf819bdfc7a7c53eb0122de46162c687e224baaca5ac1a66bcd169fff817971bd85021ae2cd71dd3ecf5e358ad8ac952f80116284ce15ae8ee120211b591717eae507a71d32a37db140e26925370cabe52f71b4a577f8afc91c7db71d21170de234eed7c72b061c462d1ddd75bbcaaa2594f9eba26d974653299bba917ab75098f6964636dce709c865d5e4e01441d11a32b2d333d6429dddb27916681048a84961c401bfaf92b1df2c45be68aa7b9b2f26bb4a4d2bbd7fdaf2ad7ff50c49b056e192754cae0f29bca4f
-: manu: 1229081888
-: name: 000b4d9d1dd3ac215aa451032d478ad8cd74216ff0c5e3fd135687b6edd457ce35d8
+#+begin_example
+spec:
+  provider:
+    tpm:
+      tcti: "device:/dev/tpmrm0"
+      handle: 2164260888
+      parent: ~
+      private: ~
+      unique:
+        RSA:
+          bytes: bd1fdfb6ad445dd24bd9150886a7ea392863bf2864f8105bca870349150691309581f08271d93a7286e6d8126df38ca51b4d5366a867461743c842d0e4d6867cc81e8d8a96b6c7b01d702d1674d6432ac686d9e1d9b767b46d93d640c9ddcf952c46690231711ccd040d7b85453acb9a857040f49208823315b970e0ec3c15f31a1d6d17238a6b1e717020946ba2e8591f5aa36a3d65b4ac166755e54609355c2517dafc6c545f322093dd6ad01b33931c9f25ef3e47e61bf5d2a2b553af3fef8c2180267b76857768d38e5954b90362923df57ded9a9264cc56a120c48d2f47e6d7dc7a069f2a2c7b4d4079a599df8e672bca9540dcd024bcdd45cfc6450653
+  algo:
+    RSA:
+      bits: 2048
+      exponent: ~
+  private: ~
+  capabilities:
+    - decrypt
+    - restrict
+  auth: "123"
+#+end_example
+
+Now, taking the private key and wrapping it with the parent's key:
+
+#+BEGIN_SRC sh
+wrap --parent duplication-parent-full.yml  -f private-key.yml | tee duplicated-key.yml
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      handle: ~
+      parent: 2164260903
+      private: 0020381917ad8005438135e00ec1baac2bbdb4a5081c71fbd3c82e55533822c7e642d444769bf9e7164602b644ba82e592627a9a749179171e8f9006c9fa17b2ef24f4373594c82851aa8de785f90e8519693d716f5d6b86d135ec891bff69437dee7675a726829e9a5647ac8bb7b07995bdd97b72d3bfce4e8c5348fd37888eaa58c2b47c3c918d616e86f0981d5b42cf54433cf085d8e3d97cf4cfb5c5329dd453ca36696feac1e46cf710a067
+      unique:
+        RSA:
+          bytes: cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523
+      secret: 6a923195cd711ff6a57809cfe6cfe3a5c8ffa62bc72a69f03386c82bfa5754dcf8d00c482f4e96d5e04342937ce36b72b5c194276ff58d079aa2bf6186f965582142428ba7f971072e7102402ba5d49e9e8c12b7feea1ff4f8f9a0518786d685926d3310b494859e040fc98ae2fb4b7381990d79ae59c09986c9701d313d265877e05e8a9d14711bf039862814eed515f79677944a9663b81fcb25825c0d8100cce8f1322b644ac63d30fb7e68ace9c60507ab1abd2073ff96ead429b51871bc50ba103459b3d4383d452e2fc07401f17b8401777e538381a0262578616a86d5b9a67cff2080f061b6f429cd0b8cac374a7a8ceb95b412a922d849a7c0908616
+  algo:
+    RSA:
+      bits: 1024
+      exponent: ~
+  private: ~
+  capabilities:
+    - sign
+  auth: "123"
+#+end_example
 
 * Work plan
 
