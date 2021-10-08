@@ -917,6 +917,12 @@ The duplicated key can be inspected for public key:
 get-key -f duplicated-key.yml
 #+END_SRC
 
+It also works the same way as any other key:
+
+#+BEGIN_SRC sh
+echo -n foo | openssl dgst -binary -sha256 | sign-digest -f duplicated-key.yml | xxd
+#+END_SRC
+
 * Work plan
 
 Work on this project is being sponsored by NLnet. See
