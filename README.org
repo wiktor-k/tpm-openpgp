@@ -874,7 +874,7 @@ spec:
 Now, taking the private key and wrapping it with the parent's key:
 
 #+BEGIN_SRC sh
-wrap --parent duplication-parent-full.yml  -f private-key.yml | tee duplicated-key.yml
+wrap --parent duplication-parent-full.yml  -f private-key.yml | tee key-to-import.yml
 #+END_SRC
 
 #+RESULTS:
@@ -899,6 +899,18 @@ spec:
     - sign
   auth: "123"
 #+end_example
+
+The duplicated key can then be imported:
+
+#+BEGIN_SRC sh
+create-key -f key-to-import.yml | tee duplicated-key.yml
+#+END_SRC
+
+The key:
+
+#+BEGIN_SRC sh
+get-key -f duplicated-key.yml
+#+END_SRC
 
 * Work plan
 

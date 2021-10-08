@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (public, _, _) = context.read_public(key_handle)?;
 
-    let public_key = match public {
+    let public_key = match &public {
         // call should be safe given our trust in the TSS library
         Public::Rsa { unique, .. } => tpm_openpgp::PublicKeyBytes::RSA(RsaPublic {
             bytes: hex::encode(unique.value()),
@@ -61,6 +61,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     deserialized.spec.provider.tpm.unique = Some(public_key);
+    deserialized.spec.provider.tpm.policy = hex::encode(
+        match &public {
+            tss_esapi::structures::Public::Rsa { auth_policy, .. } => auth_policy,
+            tss_esapi::structures::Public::Ecc { auth_policy, .. } => auth_policy,
+            _ => panic!("Unsupported key type."),
+        }
+        .value(),
+    )
+    .into();
 
     println!("{}", serde_yaml::to_string(&deserialized)?);
 

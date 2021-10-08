@@ -9,7 +9,9 @@ use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 use tss_esapi::interface_types::dynamic_handles::Persistent;
 use tss_esapi::interface_types::resource_handles::{Hierarchy, Provision};
-use tss_esapi::structures::{Auth, Public, SymmetricDefinition};
+use tss_esapi::structures::{
+    Auth, Data, EncryptedSecret, Private, Public, SymmetricDefinition, SymmetricDefinitionObject,
+};
 
 use tss_esapi::{Context, Tcti};
 
@@ -77,17 +79,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             key_handle.into(),
             &Auth::try_from(deserialized.spec.auth.as_bytes())?,
         )?;
-        let pk = context.create(
-            key_handle,
-            &tpm_openpgp::create(&deserialized.spec)?.0.build()?,
-            Some(&key_auth),
-            None,
-            None,
-            None,
-        )?;
 
-        deserialized.spec.provider.tpm.private = Some(hex::encode(pk.out_private.value()));
-        deserialized.spec.provider.tpm.unique = match pk.out_public {
+        let public = tpm_openpgp::create(&deserialized.spec)?.0.build()?;
+
+        let (out_private, out_public) =
+            if let Some(wrapped_key) = &deserialized.spec.provider.tpm.wrapped {
+                let private = Private::try_from(hex::decode(&wrapped_key.private).unwrap())?;
+
+                let secret = EncryptedSecret::try_from(hex::decode(&wrapped_key.secret).unwrap())?;
+                let data = Data::try_from(hex::decode(&wrapped_key.data).unwrap())?;
+
+                let private = context.import(
+                    key_handle.into(),
+                    Some(data),
+                    public.clone(),
+                    private,
+                    secret,
+                    SymmetricDefinitionObject::Null,
+                )?;
+
+                let child_handle = context.load(key_handle, private.clone(), &public)?;
+                let public = context.read_public(child_handle)?.0;
+                (private, public)
+            } else {
+                let pk = context.create(key_handle, &public, Some(&key_auth), None, None, None)?;
+                (pk.out_private, pk.out_public)
+            };
+
+        deserialized.spec.provider.tpm.private = Some(hex::encode(out_private.value()));
+        deserialized.spec.provider.tpm.unique = match &out_public {
             Public::Rsa { unique, .. } => Some(PublicKeyBytes::RSA(RsaPublic {
                 bytes: hex::encode(unique.value()),
             })),
@@ -97,7 +117,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             })),
             _ => panic!("Unsupported public area type"),
         };
+        deserialized.spec.provider.tpm.wrapped = None;
+
+        let auth_policy = match &out_public {
+            tss_esapi::structures::Public::Rsa { auth_policy, .. } => auth_policy,
+            tss_esapi::structures::Public::Ecc { auth_policy, .. } => auth_policy,
+            _ => panic!("Unsupported key type."),
+        }
+        .value();
+
+        deserialized.spec.provider.tpm.policy = if auth_policy.is_empty() {
+            None
+        } else {
+            hex::encode(auth_policy).into()
+        };
+
         println!("{}", serde_yaml::to_string(&deserialized)?);
+    } else {
+        panic!("Unknown key definition. Aborting...");
     }
     Ok(())
 }
