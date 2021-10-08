@@ -98,7 +98,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     SymmetricDefinitionObject::Null,
                 )?;
 
-                let child_handle = context.load(key_handle, private.clone(), &public)?;
+                let child_handle = context.load(key_handle, private, &public)?;
+                let private = context.object_change_auth(
+                    child_handle.into(),
+                    key_handle.into(),
+                    Auth::try_from(deserialized.spec.auth.as_bytes())?,
+                )?;
                 let public = context.read_public(child_handle)?.0;
                 (private, public)
             } else {
