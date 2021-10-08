@@ -883,18 +883,18 @@ spec:
   provider:
     tpm:
       tcti: "mssim:"
-      handle: ~
       parent: 2164260903
-      private: 0020381917ad8005438135e00ec1baac2bbdb4a5081c71fbd3c82e55533822c7e642d444769bf9e7164602b644ba82e592627a9a749179171e8f9006c9fa17b2ef24f4373594c82851aa8de785f90e8519693d716f5d6b86d135ec891bff69437dee7675a726829e9a5647ac8bb7b07995bdd97b72d3bfce4e8c5348fd37888eaa58c2b47c3c918d616e86f0981d5b42cf54433cf085d8e3d97cf4cfb5c5329dd453ca36696feac1e46cf710a067
       unique:
         RSA:
           bytes: cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523
-      secret: 6a923195cd711ff6a57809cfe6cfe3a5c8ffa62bc72a69f03386c82bfa5754dcf8d00c482f4e96d5e04342937ce36b72b5c194276ff58d079aa2bf6186f965582142428ba7f971072e7102402ba5d49e9e8c12b7feea1ff4f8f9a0518786d685926d3310b494859e040fc98ae2fb4b7381990d79ae59c09986c9701d313d265877e05e8a9d14711bf039862814eed515f79677944a9663b81fcb25825c0d8100cce8f1322b644ac63d30fb7e68ace9c60507ab1abd2073ff96ead429b51871bc50ba103459b3d4383d452e2fc07401f17b8401777e538381a0262578616a86d5b9a67cff2080f061b6f429cd0b8cac374a7a8ceb95b412a922d849a7c0908616
+      wrapped:
+        secret: 41ccb56cfbfc120d0aa54bfd01c29e827bf58f70010cbc035eac87939eb0928c40e3a38a397fd03ad7c1b105beba154e2687ed40125e77c32f2979725940619cb5f2ae0f9238f10e593baabdf86a8ab02724c45d3d32bee36f18899387b91102d92d7fcc434d3b19599ad1ba417f3be30a1e2c4a686c472b34e3052193d8b33d94ecf5b10de590b2a275c443fdc31fa65558f074320aabe9bf79c3d8db34d108b026c4803ea342f179cebff89c84cb172127b6b517c1537bbcd05d551016dc886f7115b3a74265df5332da70a49e6981ab1a441307bcac0ba54a2505e74bd6df490075795bb39f9c63abbe02c632020786d6d89a88e4dc32b8f553f5805b3e0d
+        private: 0020dccc065f0fc4c8db35c0a26f7742df8efa0fa7dfe7964d6e5f004405aa1fff280abec442094816fc2b51f58ea277ab49b61db7ca007f4387f251a8f1db2af77cf7fdd6ded9d793d91891c9cd7e47e18bffc3b2280bbd0e3a5b8685cfe934a199d57db474592194cd29f5701f8042318062685103e987caa88b7e8ba5cc741c576f37b4d545d0d3ed2fa2
+        data: ""
+      policy: 09bd2ec618ec5d4688b2861cd8aedbbce1c1dd0b9e31e4a12f837750b33831e2
   algo:
     RSA:
       bits: 1024
-      exponent: ~
-  private: ~
   capabilities:
     - sign
   auth: "123"
@@ -905,6 +905,26 @@ The duplicated key can then be imported:
 #+BEGIN_SRC sh
 create-key -f key-to-import.yml | tee duplicated-key.yml
 #+END_SRC
+
+#+RESULTS:
+#+begin_example
+spec:
+  provider:
+    tpm:
+      tcti: "mssim:"
+      parent: 2164260903
+      private: 00202a2ee14685008e505bf6284cd2250f4071d6cfa06e344d5e1462acb8cad0cdba0010058b8588770859c9271d31729a56b3f4d9d2b01e45e9209cbeecb7b95aa7ff86edbc8ca350abcbd28391bea433ec9eb82e8490821669d34d2362b4558c034305b5c8d51417751efad8d414e0df781785e56f8bab9395655d0a753fdf17efe0f4e6df85b8958e9df7bb29371ab22cd49e82bd1da05d4e15d971ae
+      unique:
+        RSA:
+          bytes: cd1abae5d734341ad373bae4f9ef46b1cf699d4054c859b9c0f0c811ca4d7b1cb03c66ea655156639b78c5db2c2fea42430f417ab3d4aee5f63b881dd106a3c60105bc46bb18c7a794a17f50392405551f77287e61b5f784354cd351021e1853b0cfd3470d4cc9bd9e39836b83c1be6bb200fef56786406e8cd45f73e4a9f523
+      policy: 09bd2ec618ec5d4688b2861cd8aedbbce1c1dd0b9e31e4a12f837750b33831e2
+  algo:
+    RSA:
+      bits: 1024
+  capabilities:
+    - sign
+  auth: "123"
+#+end_example
 
 Note that the imported key has =wrapped= key set. Import procedure
 checks the integrity of the key and if the encrypted seed can be
@@ -922,6 +942,18 @@ It also works the same way as any other key:
 #+BEGIN_SRC sh
 echo -n foo | openssl dgst -binary -sha256 | sign-digest -f duplicated-key.yml | xxd
 #+END_SRC
+
+#+RESULTS:
+#+begin_example
+00000000: ba01 7074 b3b4 07bd 9ea5 28fb a04f 1f83  ..pt......(..O..
+00000010: 8fa5 6965 e2de 71cb d320 4332 60a9 f088  ..ie..q.. C2`...
+00000020: 7725 5145 5688 9a12 97fa 5ad8 7c6f 3213  w%QEV.....Z.|o2.
+00000030: d21d 4c84 4888 e3f6 4eab 988c 5b72 eb65  ..L.H...N...[r.e
+00000040: d88b 16b3 473b 91d8 053e 05de 5733 208e  ....G;...>..W3 .
+00000050: e8ad 6a3e 22eb 349d 1798 ef0e 8924 2f35  ..j>".4......$/5
+00000060: 2dce 3af5 e1d3 47b9 cb9e 9ccd bc63 7e91  -.:...G......c~.
+00000070: 23e6 cac0 83e9 10a8 0aaa 7a06 6579 87ee  #.........z.ey..
+#+end_example
 
 * Work plan
 
