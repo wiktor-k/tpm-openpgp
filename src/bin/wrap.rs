@@ -11,7 +11,7 @@ use tss_esapi::constants::tss::TPM2_CC_Duplicate;
 use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::interface_types::session_handles::PolicySession;
-use tss_esapi::structures::{Data, Public, SymmetricDefinition, SymmetricDefinitionObject};
+use tss_esapi::structures::{Public, SymmetricDefinition, SymmetricDefinitionObject};
 use tss_esapi::{Context, Tcti};
 
 #[derive(Debug, StructOpt)]
@@ -37,7 +37,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut context = Context::new(tcti)?;
 
     // create a policy digest that allows key duplication
-
     let trial_session = context
         .start_auth_session(
             None,
@@ -99,12 +98,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Hierarchy::Null,
     )?;
 
-    let encryption_secret: Data = Data::try_from(context.get_random(32)?.value())?;
-
     let (public, _, _) = context.read_public(key_handle)?;
 
-    let public_key = match public {
-        // call should be safe given our trust in the TSS library
+    let public_key = match &public {
         Public::Rsa { unique, .. } => tpm_openpgp::PublicKeyBytes::RSA(RsaPublic {
             bytes: hex::encode(unique.value()),
         }),
@@ -114,6 +110,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }),
         _ => panic!("Unsupported key type."),
     };
+
+    let auth_policy = match &public {
+        tss_esapi::structures::Public::Rsa { auth_policy, .. } => auth_policy,
+        tss_esapi::structures::Public::Ecc { auth_policy, .. } => auth_policy,
+        _ => panic!("Unsupported key type."),
+    }
+    .value();
 
     deserialized.spec.provider.tpm.unique = Some(public_key);
     deserialized.spec.private = None;
@@ -151,14 +154,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (data, private, secret) = context.duplicate(
         key_handle.into(),
         parent_handle.into(),
-        Some(encryption_secret),
-        SymmetricDefinitionObject::AES_256_CFB,
+        None,
+        SymmetricDefinitionObject::Null,
     )?;
 
-    deserialized.spec.provider.tpm.private = Some(hex::encode(private.value()));
-    deserialized.spec.provider.tpm.secret = Some(hex::encode(secret.value()));
+    deserialized.spec.provider.tpm.wrapped = Some(tpm_openpgp::WrappedKey {
+        private: hex::encode(private.value()),
+        secret: hex::encode(secret.value()),
+        data: hex::encode(data.value()),
+    });
+    deserialized.spec.provider.tpm.policy = Some(hex::encode(auth_policy));
     deserialized.spec.provider.tpm.parent = parent.spec.provider.tpm.handle;
-    assert!(data.value().is_empty());
 
     println!("{}", serde_yaml::to_string(&deserialized)?);
 

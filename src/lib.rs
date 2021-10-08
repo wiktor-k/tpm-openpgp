@@ -11,7 +11,7 @@ use tss_esapi::interface_types::key_bits::RsaKeyBits;
 use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::structures::SymmetricDefinitionObject;
 use tss_esapi::structures::{
-    Auth, EccParameter, EccScheme, KeyDerivationFunctionScheme, Private, PublicBuilder,
+    Auth, Digest, EccParameter, EccScheme, KeyDerivationFunctionScheme, Private, PublicBuilder,
     PublicEccParametersBuilder, PublicRsaParametersBuilder, RsaExponent, RsaScheme,
 };
 use tss_esapi::structures::{EccPoint, PublicKeyRsa};
@@ -125,7 +125,15 @@ pub struct TpmProvider {
     pub parent: Option<u32>,
     pub private: Option<String>,
     pub unique: Option<PublicKeyBytes>,
-    pub secret: Option<String>,
+    pub wrapped: Option<WrappedKey>,
+    pub policy: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WrappedKey {
+    pub secret: String,
+    pub private: String,
+    pub data: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -167,9 +175,12 @@ impl From<&EcPublic> for EccPoint {
 pub fn create(
     spec: &Specification,
 ) -> Result<(PublicBuilder, Option<tss_esapi_sys::TPM2B_SENSITIVE>)> {
+    let is_fixed = spec.private.is_none()
+        && spec.provider.tpm.wrapped.is_none()
+        && spec.provider.tpm.policy.is_none();
     let attributes = ObjectAttributesBuilder::new()
-        .with_fixed_tpm(spec.private.is_none())
-        .with_fixed_parent(spec.private.is_none())
+        .with_fixed_tpm(is_fixed)
+        .with_fixed_parent(is_fixed)
         .with_sensitive_data_origin(true)
         .with_user_with_auth(true)
         .with_decrypt(spec.capabilities.contains(&Capability::Decrypt))
@@ -180,6 +191,10 @@ pub fn create(
     let mut builder = PublicBuilder::new()
         .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
         .with_object_attributes(attributes);
+
+    if let Some(policy) = &spec.provider.tpm.policy {
+        builder = builder.with_auth_policy(&Digest::try_from(hex::decode(policy).unwrap())?);
+    }
 
     if let Some(unique) = &spec.provider.tpm.unique {
         builder = match unique {
@@ -197,7 +212,7 @@ pub fn create(
             let mut rsa_params_builder = PublicRsaParametersBuilder::new();
             if spec.capabilities.contains(&Capability::Restrict) {
                 rsa_params_builder =
-                    rsa_params_builder.with_symmetric(SymmetricDefinitionObject::AES_128_CFB);
+                    rsa_params_builder.with_symmetric(SymmetricDefinitionObject::AES_256_CFB);
             }
             rsa_params_builder = rsa_params_builder
                 .with_scheme(if spec.capabilities.contains(&Capability::Decrypt) {
@@ -240,7 +255,7 @@ pub fn create(
                 .with_restricted(spec.capabilities.contains(&Capability::Restrict))
                 .with_key_derivation_function_scheme(KeyDerivationFunctionScheme::Null);
             if spec.capabilities.contains(&Capability::Restrict) {
-                ecc_builder = ecc_builder.with_symmetric(SymmetricDefinitionObject::AES_128_CFB);
+                ecc_builder = ecc_builder.with_symmetric(SymmetricDefinitionObject::AES_256_CFB);
             }
 
             builder = builder
