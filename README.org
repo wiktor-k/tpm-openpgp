@@ -906,7 +906,12 @@ The duplicated key can then be imported:
 create-key -f key-to-import.yml | tee duplicated-key.yml
 #+END_SRC
 
-The key:
+Note that the imported key has =wrapped= key set. Import procedure
+checks the integrity of the key and if the encrypted seed can be
+successfully imported the =wrapped= key is removed and a regular
+=private= value is being inserted.
+
+The duplicated key can be inspected for public key:
 
 #+BEGIN_SRC sh
 get-key -f duplicated-key.yml
