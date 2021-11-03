@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
+use std::str::FromStr;
 use tss_esapi::attributes::object::ObjectAttributesBuilder;
+use tss_esapi::attributes::session::SessionAttributesBuilder;
+use tss_esapi::constants::session_type::SessionType;
 use tss_esapi::constants::tss::*;
 use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
 use tss_esapi::interface_types::algorithm::{
@@ -15,9 +18,10 @@ use tss_esapi::structures::{
     PublicEccParametersBuilder, PublicRsaParametersBuilder, RsaExponent, RsaScheme,
 };
 use tss_esapi::structures::{EccPoint, PublicKeyRsa};
-
-use tss_esapi::Context;
 use tss_esapi::Result;
+
+use tss_esapi::structures::{Public, SymmetricDefinition};
+use tss_esapi::{Context, Tcti};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Description {
@@ -348,6 +352,58 @@ pub fn convert_to_key_handle(
     )?;
 
     Ok(key_handle)
+}
+
+pub fn read_key(spec: &mut Specification) -> Result<()> {
+    let tcti = Tcti::from_str(&spec.provider.tpm.tcti)?;
+
+    let mut context = Context::new(tcti)?;
+
+    let session = context.start_auth_session(
+        None,
+        None,
+        None,
+        SessionType::Hmac,
+        SymmetricDefinition::AES_256_CFB,
+        HashingAlgorithm::Sha256,
+    )?;
+    let (session_attr, session_mask) = SessionAttributesBuilder::new()
+        .with_decrypt(true)
+        .with_encrypt(true)
+        .build();
+    context
+        .tr_sess_set_attributes(session.unwrap(), session_attr, session_mask)
+        .unwrap();
+    context.set_sessions((session, None, None));
+
+    let key_handle = convert_to_key_handle(&mut context, spec)?;
+
+    let (public, _, _) = context.read_public(key_handle)?;
+
+    let public_key = match &public {
+        // call should be safe given our trust in the TSS library
+        Public::Rsa { unique, .. } => PublicKeyBytes::RSA(RsaPublic {
+            bytes: hex::encode(unique.value()),
+        }),
+        Public::Ecc { unique, .. } => PublicKeyBytes::EC(EcPublic {
+            x: hex::encode(unique.x().value()),
+            y: hex::encode(unique.y().value()),
+        }),
+        _ => panic!("Unsupported key type."),
+    };
+
+    spec.provider.tpm.unique = Some(public_key);
+    spec.provider.tpm.policy = hex::encode(
+        match &public {
+            tss_esapi::structures::Public::Rsa { auth_policy, .. } => auth_policy,
+            tss_esapi::structures::Public::Ecc { auth_policy, .. } => auth_policy,
+            _ => panic!("Unsupported key type."),
+        }
+        .value(),
+    )
+    .into();
+
+    Ok(())
 }
 
 #[cfg(test)]
