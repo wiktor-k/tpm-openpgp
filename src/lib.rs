@@ -15,13 +15,17 @@ use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::structures::SymmetricDefinitionObject;
 use tss_esapi::structures::{
     Auth, Digest, EccParameter, EccScheme, KeyDerivationFunctionScheme, Private, PublicBuilder,
-    PublicEccParametersBuilder, PublicRsaParametersBuilder, RsaExponent, RsaScheme,
+    PublicEccParametersBuilder, PublicRsaParametersBuilder, RsaExponent, RsaScheme, Signature,
 };
 use tss_esapi::structures::{EccPoint, PublicKeyRsa};
 use tss_esapi::Result;
 
 use tss_esapi::structures::{Public, SymmetricDefinition};
 use tss_esapi::{Context, Tcti};
+
+use tss_esapi::tss2_esys::{TPMT_SIG_SCHEME, TPMT_TK_HASHCHECK};
+
+use tss_esapi::constants::tss::{TPM2_ALG_NULL, TPM2_RH_NULL, TPM2_ST_HASHCHECK};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Description {
@@ -381,7 +385,6 @@ pub fn read_key(spec: &mut Specification) -> Result<()> {
     let (public, _, _) = context.read_public(key_handle)?;
 
     let public_key = match &public {
-        // call should be safe given our trust in the TSS library
         Public::Rsa { unique, .. } => PublicKeyBytes::RSA(RsaPublic {
             bytes: hex::encode(unique.value()),
         }),
@@ -404,6 +407,57 @@ pub fn read_key(spec: &mut Specification) -> Result<()> {
     .into();
 
     Ok(())
+}
+
+pub fn sign(spec: &Specification, hash: &[u8]) -> Result<Vec<u8>> {
+    let tcti = Tcti::from_str(&spec.provider.tpm.tcti)?;
+
+    let mut context = Context::new(tcti)?;
+
+    let session = context.start_auth_session(
+        None,
+        None,
+        None,
+        SessionType::Hmac,
+        SymmetricDefinition::AES_256_CFB,
+        HashingAlgorithm::Sha256,
+    )?;
+    let (session_attr, session_mask) = SessionAttributesBuilder::new()
+        .with_decrypt(true)
+        .with_encrypt(true)
+        .build();
+    context
+        .tr_sess_set_attributes(session.unwrap(), session_attr, session_mask)
+        .unwrap();
+    context.set_sessions((session, None, None));
+
+    let key_handle = convert_to_key_handle(&mut context, spec)?;
+
+    let scheme = TPMT_SIG_SCHEME {
+        scheme: TPM2_ALG_NULL,
+        details: Default::default(),
+    };
+    let validation = TPMT_TK_HASHCHECK {
+        tag: TPM2_ST_HASHCHECK,
+        hierarchy: TPM2_RH_NULL,
+        digest: Default::default(),
+    }
+    .try_into()?;
+
+    let digest = &Digest::try_from(hash)?;
+
+    let signature = context.sign(key_handle, digest, scheme, validation)?;
+
+    Ok(match signature {
+        Signature::RsaSsa(ref signature) => Vec::from(signature.signature().value()),
+        Signature::EcDsa(signature) => {
+            let mut sig = vec![];
+            sig.extend(signature.signature_r().value());
+            sig.extend(signature.signature_s().value());
+            sig
+        }
+        _ => panic!("Unsupported signature scheme."),
+    })
 }
 
 #[cfg(test)]
