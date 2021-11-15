@@ -39,9 +39,14 @@ RUN apt-get update -y -qq && \
     apt-get clean
 
 COPY Cargo.toml Cargo.lock /app/
-COPY src /app/src
 WORKDIR /app
+RUN mkdir .cargo
+RUN mkdir src
+RUN touch src/main.rs
+RUN cargo vendor > .cargo/config
 
+COPY src /app/src
+RUN rm src/main.rs
 RUN cargo build
 
 COPY README.org /app/
