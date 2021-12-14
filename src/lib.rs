@@ -5,6 +5,7 @@ use tss_esapi::attributes::object::ObjectAttributesBuilder;
 use tss_esapi::attributes::session::SessionAttributesBuilder;
 use tss_esapi::constants::session_type::SessionType;
 use tss_esapi::constants::tss::*;
+use tss_esapi::constants::CommandCode;
 use tss_esapi::handles::{KeyHandle, PersistentTpmHandle, TpmHandle};
 use tss_esapi::interface_types::algorithm::{
     EccSchemeAlgorithm, HashingAlgorithm, PublicAlgorithm, RsaSchemeAlgorithm,
@@ -17,16 +18,15 @@ use tss_esapi::structures::SymmetricDefinitionObject;
 use tss_esapi::structures::{
     Auth, Digest, EccParameter, EccScheme, KeyDerivationFunctionScheme, Private, PublicBuilder,
     PublicEccParametersBuilder, PublicRsaParametersBuilder, RsaExponent, RsaScheme, Signature,
+    SignatureScheme,
 };
 use tss_esapi::structures::{EccPoint, PublicKeyRsa};
 use tss_esapi::Result;
 
+use tss_esapi::constants::tss::TPM2_ST_HASHCHECK;
 use tss_esapi::structures::{Public, SymmetricDefinition};
+use tss_esapi::tss2_esys::TPMT_TK_HASHCHECK;
 use tss_esapi::{Context, Tcti};
-
-use tss_esapi::tss2_esys::{TPMT_SIG_SCHEME, TPMT_TK_HASHCHECK};
-
-use tss_esapi::constants::tss::{TPM2_ALG_NULL, TPM2_RH_NULL, TPM2_ST_HASHCHECK};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Description {
@@ -434,10 +434,7 @@ pub fn sign(spec: &Specification, hash: &[u8]) -> Result<Vec<u8>> {
 
     let key_handle = convert_to_key_handle(&mut context, spec)?;
 
-    let scheme = TPMT_SIG_SCHEME {
-        scheme: TPM2_ALG_NULL,
-        details: Default::default(),
-    };
+    let scheme = SignatureScheme::Null;
     let validation = TPMT_TK_HASHCHECK {
         tag: TPM2_ST_HASHCHECK,
         hierarchy: TPM2_RH_NULL,
@@ -494,7 +491,7 @@ pub fn wrap(spec: &mut Specification, parent: &Specification) -> Result<()> {
 
     context.policy_auth_value(policy_session)?;
 
-    context.policy_command_code(policy_session, TPM2_CC_Duplicate)?;
+    context.policy_command_code(policy_session, CommandCode::Duplicate)?;
     let digest = context.policy_get_digest(policy_session)?;
     // end of: create policy digest
 
@@ -576,7 +573,7 @@ pub fn wrap(spec: &mut Specification, parent: &Specification) -> Result<()> {
 
     context.policy_auth_value(policy_session)?;
 
-    context.policy_command_code(policy_session, TPM2_CC_Duplicate)?;
+    context.policy_command_code(policy_session, CommandCode::Duplicate)?;
     context.set_sessions((Some(policy_auth_session), None, None));
 
     let (data, private, secret) = context.duplicate(
