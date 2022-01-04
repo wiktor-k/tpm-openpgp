@@ -20,11 +20,12 @@ use tss_esapi::structures::{
     PublicEccParametersBuilder, PublicRsaParametersBuilder, RsaExponent, RsaScheme, Signature,
     SignatureScheme,
 };
-use tss_esapi::structures::{EccPoint, PublicKeyRsa};
 use tss_esapi::Result;
 
 use tss_esapi::constants::tss::TPM2_ST_HASHCHECK;
-use tss_esapi::structures::{Public, SymmetricDefinition};
+use tss_esapi::structures::{
+    Data, EccPoint, Public, PublicKeyRsa, RsaDecryptionScheme, SymmetricDefinition,
+};
 use tss_esapi::tss2_esys::TPMT_TK_HASHCHECK;
 use tss_esapi::{Context, Tcti};
 
@@ -408,6 +409,42 @@ pub fn read_key(spec: &mut Specification) -> Result<()> {
     .into();
 
     Ok(())
+}
+
+pub fn decrypt(spec: &Specification, ciphertext: &[u8]) -> Result<Vec<u8>> {
+    let tcti = Tcti::from_str(&spec.provider.tpm.tcti)?;
+
+    let mut context = Context::new(tcti)?;
+
+    let session = context.start_auth_session(
+        None,
+        None,
+        None,
+        SessionType::Hmac,
+        SymmetricDefinition::AES_256_CFB,
+        HashingAlgorithm::Sha256,
+    )?;
+    let (session_attr, session_mask) = SessionAttributesBuilder::new()
+        .with_decrypt(true)
+        .with_encrypt(true)
+        .build();
+    context
+        .tr_sess_set_attributes(session.unwrap(), session_attr, session_mask)
+        .unwrap();
+    context.set_sessions((session, None, None));
+
+    let key_handle = convert_to_key_handle(&mut context, spec)?;
+
+    let cipher_text = PublicKeyRsa::try_from(ciphertext)?;
+
+    let plain_text = context.rsa_decrypt(
+        key_handle,
+        cipher_text,
+        RsaDecryptionScheme::Null,
+        Data::default(),
+    )?;
+
+    Ok(plain_text.to_vec())
 }
 
 pub fn sign(spec: &Specification, hash: &[u8]) -> Result<Vec<u8>> {
