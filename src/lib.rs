@@ -440,7 +440,7 @@ pub fn decrypt(spec: &Specification, ciphertext: &[u8]) -> Result<Vec<u8>> {
     let plain_text = context.rsa_decrypt(
         key_handle,
         cipher_text,
-        RsaDecryptionScheme::Null,
+        RsaDecryptionScheme::RsaEs,
         Data::default(),
     )?;
 

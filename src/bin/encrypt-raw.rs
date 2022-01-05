@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let plain_text = context.rsa_encrypt(
         key_handle,
         cipher_text,
-        RsaDecryptionScheme::Null,
+        RsaDecryptionScheme::RsaEs,
         Data::default(),
     )?;
 
