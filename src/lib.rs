@@ -447,6 +447,43 @@ pub fn decrypt(spec: &Specification, ciphertext: &[u8]) -> Result<Vec<u8>> {
     Ok(plain_text.to_vec())
 }
 
+pub fn derive(spec: &Specification, data: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
+    let tcti = Tcti::from_str(&spec.provider.tpm.tcti)?;
+
+    let mut context = Context::new(tcti)?;
+
+    let session = context.start_auth_session(
+        None,
+        None,
+        None,
+        SessionType::Hmac,
+        SymmetricDefinition::AES_256_CFB,
+        HashingAlgorithm::Sha256,
+    )?;
+    let (session_attr, session_mask) = SessionAttributesBuilder::new()
+        .with_decrypt(true)
+        .with_encrypt(true)
+        .build();
+    context
+        .tr_sess_set_attributes(session.unwrap(), session_attr, session_mask)
+        .unwrap();
+    context.set_sessions((session, None, None));
+
+    let key_handle = convert_to_key_handle(&mut context, spec)?;
+
+    let size = data.len() / 2;
+
+    let z_point = context.ecdh_z_gen(
+        key_handle,
+        EccPoint::new(
+            EccParameter::try_from(&data[..size])?,
+            EccParameter::try_from(&data[size..])?,
+        ),
+    )?;
+
+    Ok((z_point.x().value().to_vec(), z_point.y().value().to_vec()))
+}
+
 pub fn sign(spec: &Specification, hash: &[u8]) -> Result<Vec<u8>> {
     let tcti = Tcti::from_str(&spec.provider.tpm.tcti)?;
 
