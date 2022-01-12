@@ -774,6 +774,12 @@ create-key -f key-nist-p256-decryption.yml
 
 # create a shared secret and public point
 ecdh-key-gen -f key-nist-p256-decryption.yml --public-point public.bin > shared-secret.bin
+
+echo "Public point:"
+xxd public.bin
+
+echo "Shared secret:"
+xxd shared-secret.bin
 #+END_SRC
 
 And we use the shared secret to encrypt the message. Shared secret is
